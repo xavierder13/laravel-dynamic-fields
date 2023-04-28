@@ -87,27 +87,108 @@ class SAPUDFController extends Controller
 
     public function store(Request $request)
     {   
-        
+       
         $rules = [
-            'name.required' => 'Please enter permission',
-            'name.unique' => 'Permission already exists'
+            'table_name.required' => 'Table Name is required',
+            'table_name.unique' => 'Table Name already exists',
+            'description.required' => 'Description is required',
+            'type.required' => 'Table Type is required',
         ];
 
         $validator = Validator::make($request->all(),[
-            'name' => 'required|unique:permissions,name',
+            'table_name' => 'required|unique:permissions,name',
+            'description' => 'required',
+            'type' => 'required',
         ], $rules);
 
         if($validator->fails())
         {
             return response()->json($validator->errors(), 200);
         }
+        
+        $sap_table = new SapTable();
+        $sap_table->table_name = $request->get('table_name');    
+        $sap_table->description = $request->get('description');
+        $sap_table->type = $request->get('type');  
+        // $sap_table->save();
 
-        $permission = new Permission();
-        $permission->name = $request->get('name');
-        $permission->guard_name = 'web';
-        $permission->save();
+        return response()->json(['success' => 'Record has successfully added', 'sap_table' => $sap_table], 200);
+    }
 
-        return response()->json(['success' => 'Record has successfully added', 'permission' => $permission], 200);
+    public function store_field(Request $request)
+    {   
+        
+        $rules = [
+            '*.field_name.required' => 'Field Name is required',
+            '*.field_name.unique' => 'Field Name already exists',
+            '*.description.required' => 'Description is required',
+            '*.type.required' => 'Field Type is required',
+        ];
+
+        $valid_fields = [
+            '*.table_name' => 'required|unique:permissions,name',
+            '*.description' => 'required',
+            '*.type' => 'required',
+        ];
+
+
+        if($request->get('type') === 'string')
+        {   
+            $valid_fields['*.length'] = 'required|numeric|digits_between:1,255';
+            $rules['*.length.required'] = 'Field Length is required';
+            $rules['*.length.numeric'] = 'Field Length must be numeric';
+            $rules['*.length.digits_between'] = 'Field Length must be betwee 1 and 255';
+        }
+
+
+        $validator = Validator::make($request->all(), $valid_fields, $rules);
+
+        if($validator->fails())
+        {
+            return response()->json($validator->errors(), 200);
+        }
+        
+        $sap_table_field = new SapTableField();
+        $sap_table_field->field_name = $request->get('field_name');    
+        $sap_table_field->description = $request->get('description');
+        $sap_table_field->type = $request->get('type');  
+        $sap_table_field->length = $request->get('length'); 
+        $sap_table_field->default_value = $request->get('default_value'); 
+        $sap_table_field->has_options = $request->get('has_options'); 
+        $sap_table_field->is_required = $request->get('is_required'); 
+        // $sap_table->save();
+
+        // return response()->json(['success' => 'Record has successfully added', 'sap_table_field' => $sap_table_field], 200);
+    }
+
+    public function store_option(Request $request)
+    {   
+        
+        $rules = [
+            '*.value.required' => 'Field Name is required',
+            '*.description.unique' => 'Field Name already exists',
+        ];
+
+        $valid_fields = [
+            '*.value' => 'required',
+            '*.description' => 'required',
+        ];
+
+
+        $validator = Validator::make($request->all(), $valid_fields, $rules);
+
+        if($validator->fails())
+        {
+            return response()->json($validator->errors(), 200);
+        }
+        
+        $sap_table_field_option = new SapTableField();
+        $sap_table_field_option->field_name = $request->get('value');    
+        $sap_table_field_option->description = $request->get('description');
+
+        // $sap_table->save();
+
+        // return response()->json(['success' => 'Record has successfully added', 'sap_table_field' => $sap_table_field], 200);
     }
 
 

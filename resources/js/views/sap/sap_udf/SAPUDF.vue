@@ -263,13 +263,22 @@
                                   </tfoot>
                                 </template>
                               </v-simple-table>
+                              <v-alert
+                                dense
+                                outlined
+                                type="error"
+                                class="pa-1 mt-2 mb-0"
+                                v-if="fieldUnsaved"
+                              >
+                                There are unsaved field data
+                              </v-alert>
                             </v-card-text>
                           </v-card>
                         </v-col>
                         <v-divider vertical v-if="fieldHasOptions"></v-divider>
                         <v-col cols="4" v-if="fieldHasOptions">
                           <v-card>
-                            <v-card-title class="subtitle-1">Field Options {{fieldHasOptions}}</v-card-title>
+                            <v-card-title class="subtitle-1">Field Options</v-card-title>
                             <v-card-text>
                               <v-simple-table class="elevation-1" id="sap_table_field_options">
                                 <template v-slot:default>
@@ -379,9 +388,17 @@
                                   </tfoot>
                                 </template>
                               </v-simple-table>
+                              <v-alert
+                                dense
+                                outlined
+                                type="error"
+                                class="pa-1 mt-2 mb-0"
+                                v-if="optionUnsaved"
+                              >
+                                There are unsaved option data
+                              </v-alert>
                             </v-card-text>
                           </v-card>
-                          
                         </v-col>
                       </v-row>
                     </v-card-text>
@@ -594,11 +611,13 @@ export default {
         table_name: "",
         description: "",
         type: "",
+        sap_table_fields: [],
       },
       defaultItem: {
         table_name: "",
         description: "",
         type: "",
+        sap_table_fields: [],
       },
       editedField: {
         field_name: "",
@@ -654,6 +673,8 @@ export default {
       tableFieldsMode: "",
       tableOptionsMode: "",
       fieldHasOptions: false,
+      fieldUnsaved: false,
+      optionUnsaved: false,
     };
   },
 
@@ -675,12 +696,23 @@ export default {
     newSAPTable() {
       this.dialog = true;
       this.mode = "Add";
+      this.newFieldItem();
     },
 
     saveUDFTable() {
+
+      // this.tableFieldsMode has value ('Add', 'Edit') then set this.tableFieldsMode = true
+      this.fieldUnsaved = this.tableFieldsMode ? true : false;
+
+      // this.tableOptionsMode has value ('Add', 'Edit') then set this.optionUnsaved = true
+      this.optionUnsaved = this.tableOptionsMode ? true : false;
+
       this.$v.editedItem.$touch();
       this.$v.editedField.$touch();
       this.$v.editedOption.$touch();
+      // console.log('this.$v.editedItem.$error', this.$v.editedItem.$error);
+      // console.log('this.fieldListError', this.fieldListError);
+      // console.log('this.tableFieldsMode', this.tableFieldsMode);
 
       if(!this.$v.editedItem.$error // if editedItem has no error
          && !this.fieldListError // if fieldListError (sap_table_fields) has no error or not empty
@@ -688,7 +720,7 @@ export default {
         )
       { 
 
-        console.log('sada');
+        this.storeUDFTable();
 
       }
 
@@ -730,7 +762,16 @@ export default {
     },
 
     storeUDFTable() {
-
+      
+      axios.post('/api/sap/udf/store', this.editedItem).then(
+        (response) => {
+          console.log(response.data);
+        },
+        (error) => {
+          this.isUnauthorized(error);
+          console.log(error);
+        }
+      )
     },
 
     resetData(){
@@ -759,12 +800,18 @@ export default {
       if (!hasNew) {
         await this.sap_table_fields.push({ status: "New", sap_table_field_options: [] });
       }
+      
+      // get the index of latest pushed data 
+      this.editedFieldIndex =  await this.sap_table_fields.length - 1;
 
       await this.updateScroll();
 
     },
 
     saveField(){
+
+      // this.tableOptionsMode has value ('Add', 'Edit') then set this.optionUnsaved = true
+      this.optionUnsaved = this.tableOptionsMode ? true : false;
 
       this.$v.editedField.$touch();
       this.$v.editedOption.$touch();
@@ -781,34 +828,30 @@ export default {
           {
             let index = this.sap_table_fields.indexOf({ status: 'New' }); 
             this.sap_table_fields.splice(index, 1);
+
+            this.editedField = Object.assign(this.editedField, { sap_table_field_options: this.sap_table_field_options})
             this.sap_table_fields.push(this.editedField);
           }
           else
           {
             this.sap_table_fields[this.editedFieldIndex] = this.editedField;
           }
+
+          this.editedItem.sap_table_fields = this.sap_table_fields;
+
         }
         else
         {
 
           if(this.tableFieldsMode === 'Add')
           {
-
-
-
-            let index = this.sap_table_fields.indexOf({ status: 'New' }); 
-            this.sap_table_fields.splice(index, 1);
-            this.sap_table_fields.push(this.editedField);
+            this.storeField();
           }
           else
           {
-
-            this.sap_table_fields[this.editedFieldIndex] = this.editedField;
-
+            this.updateField();
           }
 
-
-          this.sap_tables[this.editedIndex] = this.sap_table_fields;
         }
 
         this.resetFieldData();
@@ -818,11 +861,13 @@ export default {
     },
     
     storeField() { 
-
+      let index = this.sap_table_fields.indexOf({ status: 'New' }); 
+      this.sap_table_fields.splice(index, 1);
+      this.sap_table_fields.push(this.editedField);
     },
 
     updateField() {
-
+      this.sap_table_fields[this.editedFieldIndex] = this.editedField;
     },
 
     cancelFieldEvent(item) {
@@ -835,10 +880,9 @@ export default {
     },
 
     editField(item) {
-      
       this.tableFieldsMode = "Edit";
-      this.fieldHasOptions = item.has_options ? true : false;
       this.editedField = Object.assign({}, item);
+      this.fieldHasOptions = item.has_options ? true : false;
       this.editedFieldIndex = this.sap_table_fields.indexOf(item);
       this.sap_table_field_options = item.sap_table_field_options;
     },
@@ -862,6 +906,7 @@ export default {
       this.editedFieldIndex = -1;
       this.tableFieldsMode = "";
       this.fieldHasOptions = false;
+      this.fieldUnsaved = false;
       this.sap_table_field_options = [];
     },
 
@@ -947,6 +992,7 @@ export default {
       this.editedOption = Object.assign({}, this.defaultField);
       this.editedOptionIndex = -1;
       this.tableOptionsMode = "";
+      this.optionUnsaved = false;
     },
 
     hasOptionsClick(){
@@ -975,6 +1021,7 @@ export default {
               if (result.value) {
                 this.fieldHasOptions = false;
                 this.sap_table_field_options = [];
+                this.resetOptionData();
               }
               else
               {
@@ -986,6 +1033,7 @@ export default {
         else
         {
           this.fieldHasOptions = false;
+          this.resetOptionData();
         }
         
       }
@@ -1153,7 +1201,7 @@ export default {
 
     fieldListError(){
       //if sap_table_fields is empty then set error to true
-      return !this.sap_table_field_options.length ? true : false;
+      return !this.sap_table_fields.length ? true : false;
     },
 
     optionListError(){

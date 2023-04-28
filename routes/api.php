@@ -106,6 +106,14 @@ Route::group(['prefix' => 'sap', 'middleware' => ['auth:api']], function(){
             'uses' => 'API\SAPUDFController@store',
             'as' => 'sap.udf.store',
         ]);
+        Route::post('/store_field', [
+            'uses' => 'API\SAPUDFController@store_field',
+            'as' => 'sap.udf.store.field',
+        ]);
+        Route::post('/store_option', [
+            'uses' => 'API\SAPUDFController@store_option',
+            'as' => 'sap.udf.store.option',
+        ]);
         Route::post('/edit', [
             'uses' => 'API\SAPUDFController@edit',
             'as' => 'sap.udf.edit',
@@ -114,11 +122,28 @@ Route::group(['prefix' => 'sap', 'middleware' => ['auth:api']], function(){
             'uses' => 'API\SAPUDFController@update',
             'as' => 'sap.udf.update',
         ]);
+        Route::post('/update_field/{id}', [
+            'uses' => 'API\SAPUDFController@update_field',
+            'as' => 'sap.udf.update.field',
+        ]);
+        Route::post('/update_option/{id}', [
+            'uses' => 'API\SAPUDFController@update_option',
+            'as' => 'sap.udf.update.option',
+        ]);
         Route::post('/delete', [
             'uses' => 'API\SAPUDFController@delete',
             'as' => 'sap.udf.delete',
         ]);
+        Route::post('/delete_field', [
+            'uses' => 'API\SAPUDFController@delete_field',
+            'as' => 'sap.udf.delete.field',
+        ]);
+        Route::post('/delete_option', [
+            'uses' => 'API\SAPUDFController@delete_option',
+            'as' => 'sap.udf.delete.option',
+        ]);
     });
+    
     
 
 });

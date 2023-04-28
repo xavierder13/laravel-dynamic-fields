@@ -67,7 +67,7 @@
             <v-img src="/img/default-profile.png"></v-img>
           </v-list-item-avatar>
           <v-list-item-content>
-            <v-list-item-title>Laravel Socket.IO</v-list-item-title>
+            <v-list-item-title>Laravel Dynamic Fields</v-list-item-title>
             <v-list-item-subtitle>{{ user.name }}</v-list-item-subtitle>
           </v-list-item-content>
         </v-list-item>
@@ -191,7 +191,7 @@
     <v-footer padless dense dark app>
       <v-col class="text-center" cols="12">
         Copyright © {{ new Date().getFullYear() }} —
-        <strong> LARAVEL SOCKET.IO</strong>
+        <strong> LARAVEL DYNAMIC FIELDS</strong>
       </v-col>
     </v-footer>
   </v-app>
