@@ -321,7 +321,7 @@ export default {
       "Bearer " + localStorage.getItem("access_token");
     this.userRolesPermissions();
     this.getUser();
-    this.websocket();
+    // this.websocket();
 
   },
 };

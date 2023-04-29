@@ -87,7 +87,7 @@ class SAPUDFController extends Controller
 
     public function store(Request $request)
     {   
-       
+        // START validate SAP Table
         $rules = [
             'table_name.required' => 'Table Name is required',
             'table_name.unique' => 'Table Name already exists',
@@ -96,7 +96,7 @@ class SAPUDFController extends Controller
         ];
 
         $validator = Validator::make($request->all(),[
-            'table_name' => 'required|unique:permissions,name',
+            'table_name' => 'required|unique:sap_tables,table_name',
             'description' => 'required',
             'type' => 'required',
         ], $rules);
@@ -105,6 +105,75 @@ class SAPUDFController extends Controller
         {
             return response()->json($validator->errors(), 200);
         }
+
+        // END validate SAP Table
+
+        // START validate SAP Table Fields
+        $rules = [
+            '*.field_name.required' => 'Field Name is required',
+            '*.field_name.unique' => 'Field Name already exists',
+            '*.description.required' => 'Description is required',
+            '*.type.required' => 'Field Type is required',
+        ];
+
+        $valid_fields = [
+            '*.field_name' => 'required|unique:permissions,name',
+            '*.description' => 'required',
+            '*.type' => 'required',
+        ];
+
+        $sap_table_fields = $request->get('sap_table_fields');
+
+        // foreach ($sap_table_fields as $key => $value) 
+        // {
+        //     if($value['type'] === 'string')
+        //     {   
+        //         $valid_fields[$key.'*.length'] = 'required|numeric|digits_between:1,255';
+        //         $rules[$key.'.*.length.required'] = 'Field Length is required';
+        //         $rules[$key.'.*.length.numeric'] = 'Field Length must be numeric';
+        //         $rules[$key.'.*.length.digits_between'] = 'Field Length must be between 1 and 255';
+
+        //         $validator = Validator::make($sap_table_fields, $valid_fields, $rules);
+
+        //         if($validator->fails())
+        //         {
+        //             return response()->json($validator->errors(), 200);
+        //         }
+                
+        //     }
+        // }
+
+        $validator = Validator::make($sap_table_fields, $valid_fields, $rules);
+
+        if($validator->fails())
+        {
+            return response()->json($validator->errors(), 200);
+        }
+
+        // END validate SAP Table Fields
+
+        // START validate SAP Table Field Options
+        foreach ($sap_table_fields as $key => $value) {
+            $rules = [
+                '*.value.required' => 'Field Name is required',
+                '*.description.required' => 'Description is required',
+            ];
+    
+            $valid_fields = [
+                '*.value' => 'required',
+                '*.description' => 'required',
+            ];
+    
+    
+            $validator = Validator::make($value['sap_table_field_options'], $valid_fields, $rules);
+    
+            if($validator->fails())
+            {
+                return response()->json($validator->errors(), 200);
+            }
+        }
+        // END validate SAP Table Field Options
+
         
         $sap_table = new SapTable();
         $sap_table->table_name = $request->get('table_name');    
@@ -126,7 +195,7 @@ class SAPUDFController extends Controller
         ];
 
         $valid_fields = [
-            '*.table_name' => 'required|unique:permissions,name',
+            '*.field_name' => 'required|unique:permissions,name',
             '*.description' => 'required',
             '*.type' => 'required',
         ];

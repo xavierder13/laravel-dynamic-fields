@@ -106,7 +106,7 @@
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    <tr v-for="(item, index) in sap_table_fields" :class="index === editedFieldIndex ? 'blue lighten-5' : ''">
+                                    <tr v-for="(item, index) in sap_table_fields" :class="index === editedFieldIndex ? fieldUnsaved ? 'red lighten-5' : 'blue lighten-5' : ''">
                                       <td class="pa-2"> {{ index + 1 }} </td>
 
                                       <!-- START Show Data if row is not for edit (show by default) -->
@@ -291,7 +291,7 @@
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    <tr v-for="(item, index) in sap_table_field_options" :class="index === editedOptionIndex ? 'blue lighten-5' : ''">
+                                    <tr v-for="(item, index) in sap_table_field_options" :class="index === editedOptionIndex ?  optionUnsaved ? 'red lighten-5' : 'blue lighten-5' : ''">
                                       <td class="pa-2">{{ index + 1 }}</td>
 
                                       <!-- START Show Data if row is not for edit (show by default) -->
