@@ -48,7 +48,7 @@
                               label="Table Name"
                               required
                               :error-messages="tableNameErrors"
-                              @input="$v.editedItem.table_name.$touch()"
+                              @input="$v.editedItem.table_name.$touch() + (errorFields.table_name = '')"
                               @blur="$v.editedItem.table_name.$touch()"
                             ></v-text-field>
                           </v-col>
@@ -98,7 +98,7 @@
                                       <th class="pa-2">Field Name</th>
                                       <th class="pa-2">Description</th>
                                       <th class="pa-2" width="120px">Type</th>
-                                      <th class="pa-2" width="60px" v-if="fieldLengthIsRequired">Length</th>
+                                      <th class="pa-2" width="60px">Length</th>
                                       <th class="pa-2">Default Value</th>
                                       <th class="pa-2">Has Options</th>
                                       <th class="pa-2">Required</th>
@@ -114,7 +114,7 @@
                                         <td class="pa-2"> {{ item.field_name }} </td>
                                         <td class="pa-2"> {{ item.description }}</td>
                                         <td class="pa-2"> {{ item.type }} </td>
-                                        <td class="pa-2" v-if="fieldLengthIsRequired"> {{ item.length }} </td>
+                                        <td class="pa-2"> {{ item.length }} </td>
                                         <td class="pa-2"> {{ item.default_value }}</td>
                                         <td> <v-icon color="primary" v-if="item.has_options"> mdi-check </v-icon> </td>
                                         <td> <v-chip :color="item.is_required ? 'primary' : 'seconday'" small> {{ item.is_required ? 'Required' : 'Nullable' }} </v-chip></td>
@@ -130,7 +130,7 @@
                                             dense
                                             hide-details
                                             :error-messages="fieldNameErrors"
-                                            @input="$v.editedField.field_name.$touch()"
+                                            @input="$v.editedField.field_name.$touch() + (errorFields.field_name = '')"
                                             @blur="$v.editedField.field_name.$touch()"
                                           ></v-text-field>
                                           
@@ -160,7 +160,7 @@
                                             @blur="$v.editedField.type.$touch()"
                                           ></v-autocomplete>
                                         </td>
-                                        <td class="pa-2" v-if="fieldLengthIsRequired">
+                                        <td class="pa-2">
                                           <v-text-field-integer
                                             class="pa-0"
                                             v-model="editedField.length"
@@ -171,9 +171,11 @@
                                               dense: true,
                                               error: $v.editedField.length.$error,
                                               messages: fieldLengthErrors,
+                                              disabled: editedField.type !== 'string'
                                             }"
                                             @input="$v.editedField.length.$touch()"
                                             @blur="$v.editedField.length.$touch()"
+                                            
                                           >
                                           </v-text-field-integer>
                                         </td>
@@ -311,7 +313,7 @@
                                             hide-details
                                             required
                                             :error-messages="optionValueErrors"
-                                            @input="$v.editedOption.value.$touch()"
+                                            @input="$v.editedOption.value.$touch() + (errorFields.value = '')"
                                             @blur="$v.editedOption.value.$touch()"
                                           ></v-text-field>
                                         </td>
@@ -675,6 +677,11 @@ export default {
       fieldHasOptions: false,
       fieldUnsaved: false,
       optionUnsaved: false,
+      errorFields: {
+        table_name: "",
+        field_name: "",
+        value: "",
+      },
     };
   },
 
@@ -683,7 +690,7 @@ export default {
       this.loading = true;
       axios.get("/api/sap/udf/index").then(
         (response) => {
-          console.log(response);
+         
           this.sap_tables = response.data.sap_tables;
           this.loading = false;
         },
@@ -766,6 +773,18 @@ export default {
       axios.post('/api/sap/udf/store', this.editedItem).then(
         (response) => {
           console.log(response.data);
+          let data = response.data;
+
+          if(data.success)
+          {
+            let msg = data.success
+            this.showAlert(data.success);
+          }
+          else//if return object is table_name then get the error
+          { 
+            let object_name = Object.keys(data)[0]
+            this.errorFields[object_name] = data.table_name[0];
+          }
         },
         (error) => {
           this.isUnauthorized(error);
@@ -1044,11 +1063,11 @@ export default {
       element.scrollTop = element.scrollHeight;
     },
 
-    showAlert() {
+    showAlert(msg) {
       this.$swal({
         position: "center",
         icon: "success",
-        title: "Record has been saved",
+        title: msg,
         showConfirmButton: false,
         timer: 2500,
       });
@@ -1123,7 +1142,9 @@ export default {
     },
     tableNameErrors() {
       const errors = [];
+    
       if (!this.$v.editedItem.table_name.$dirty) return errors;
+      if (this.errorFields.table_name) errors.push(this.errorFields.table_name);
       !this.$v.editedItem.table_name.required && errors.push("Table Name is required.");
       return errors;
     },
@@ -1142,6 +1163,7 @@ export default {
     fieldNameErrors(){
       const errors = [];
       if (!this.$v.editedField.field_name.$dirty) return errors;
+      if (this.errorFields.field_name) errors.push(this.errorFields.field_name);
       !this.$v.editedField.field_name.required && errors.push("Field Name is required.");
       return errors;
     },
@@ -1166,6 +1188,7 @@ export default {
     optionValueErrors(){
       const errors = [];
       if (!this.$v.editedOption.value.$dirty) return errors;
+      if (this.errorFields.value) errors.push(this.errorFields.value);
       !this.$v.editedOption.value.required && errors.push("Option Value is required.");
       return errors;
     },
