@@ -372,19 +372,50 @@ class SAPUDFController extends Controller
         );
     }
 
-
     public function delete(Request $request)
     {   
-        $permissionid = $request->get('permissionid');
-        $permission = Permission::find($permissionid);
+        $sap_table_id = $request->get('sap_table_id');
+        $sap_table = SapTable::find($sap_table_id);
         
         //if record is empty then display error page
-        if(empty($permission->id))
+        if(empty($sap_table->id))
         {
             return abort(404, 'Not Found');
         }
 
-        $permission->delete();
+        $sap_table->delete();
+
+        return response()->json(['success' => 'Record has been deleted'], 200);
+    }
+
+    public function delete_field(Request $request)
+    {   
+        $sap_table_field_id = $request->get('sap_table_id');
+        $sap_table_field = SapTableField::find($sap_table_field_id);
+        
+        //if record is empty then display error page
+        if(empty($sap_table_field->id))
+        {
+            return abort(404, 'Not Found');
+        }
+
+        $sap_table_field->delete();
+
+        return response()->json(['success' => 'Record has been deleted'], 200);
+    }
+
+    public function delete_option(Request $request)
+    {   
+        $sap_table_field_option_id = $request->get('sap_table_id');
+        $sap_table_field_option = SapTablefieldOption::find($sap_table_field_option_id);
+        
+        //if record is empty then display error page
+        if(empty($sap_table_field_option->id))
+        {
+            return abort(404, 'Not Found');
+        }
+
+        $sap_table_field_option->delete();
 
         return response()->json(['success' => 'Record has been deleted'], 200);
     }

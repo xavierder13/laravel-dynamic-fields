@@ -89,7 +89,7 @@
                               <v-simple-table 
                                 class="elevation-1" 
                                 id="sap_table_fields" 
-                                style="'max-height: 250px; overflow-y: scroll; overflow-y: auto !important'"
+                                style="max-height: 250px; overflow-y: scroll; overflow-y: auto !important"
                               >
                                 <template v-slot:default>
                                   <thead>
@@ -106,7 +106,9 @@
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    <tr v-for="(item, index) in sap_table_fields" :class="index === editedFieldIndex ? fieldUnsaved ? 'red lighten-5' : 'blue lighten-5' : ''">
+                                    <tr v-for="(item, index) in sap_table_fields" 
+                                        :class="index === editedFieldIndex ? fieldUnsaved || fieldNameExists ? 'red lighten-5' : 'blue lighten-5' : ''
+                                    ">
                                       <td class="pa-2"> {{ index + 1 }} </td>
 
                                       <!-- START Show Data if row is not for edit (show by default) -->
@@ -185,7 +187,65 @@
                                             v-model="editedField.default_value"
                                             dense
                                             hide-details
+                                            v-if="editedField.type === 'string' || editedField.type === ''"
                                           ></v-text-field>
+                                          <v-menu
+                                            ref="menu"
+                                            class="pa-0"
+                                            v-model="date_menu_default_value"
+                                            :close-on-content-click="false"
+                                            transition="scale-transition"
+                                            offset-y
+                                            min-width="auto"
+                                            v-if="editedField.type === 'date'"
+                                          >
+                                            <template v-slot:activator="{ on, attrs }">
+                                              <v-text-field
+                                                class="pa-0 ma-0"
+                                                v-model="computedDefaultValueFormatted"
+                                                prepend-icon="mdi-calendar"
+                                                v-bind="attrs"
+                                                v-on="on"
+                                                hide-details=""
+                                              ></v-text-field>
+                                            </template>
+                                            <v-date-picker
+                                              v-model="editedField.default_value"
+                                              no-title
+                                              scrollable
+                                              @input="date_menu_default_value = false"
+                                            >
+                                            </v-date-picker>
+                                          </v-menu>
+                                          <v-text-field-integer
+                                            class="pa-0"
+                                            v-model="editedField.default_value"
+                                            v-bind:properties="{
+                                              name: 'default_value',
+                                              placeholder: '0',
+                                              'hide-details': true,
+                                              dense: true,
+                                            }"
+                                            v-if="editedField.type === 'integer'"
+                                          >
+                                          </v-text-field-integer>
+                                          <v-text-field-money
+                                            class="pa-0"
+                                            v-model="editedField.default_value"
+                                            v-bind:properties="{
+                                              name: 'length',
+                                              placeholder: '0',
+                                              'hide-details': true,
+                                              dense: true,
+                                            }"
+                                            v-bind:options="{
+                                              length: 11,
+                                              precision: 2,
+                                              empty: null,
+                                            }"
+                                            v-if="editedField.type === 'decimal'"
+                                          >
+                                          </v-text-field-money>
                                         </td>
                                         <td>
                                           <v-checkbox
@@ -223,7 +283,7 @@
                                           <v-icon
                                             small
                                             color="red"
-                                            @click="showConfirmAlert('Row', item)"
+                                            @click="removeFieldRow(item)"
                                             :disabled="['Add', 'Edit'].includes(tableFieldsMode)"
                                           >
                                             mdi-delete
@@ -270,9 +330,9 @@
                                 outlined
                                 type="error"
                                 class="pa-1 mt-2 mb-0"
-                                v-if="fieldUnsaved"
+                                v-if="fieldListError.status || fieldUnsaved"
                               >
-                                There are unsaved field data
+                                {{ fieldListError.errorMsg }}
                               </v-alert>
                             </v-card-text>
                           </v-card>
@@ -282,7 +342,10 @@
                           <v-card>
                             <v-card-title class="subtitle-1">Field Options</v-card-title>
                             <v-card-text>
-                              <v-simple-table class="elevation-1" id="sap_table_field_options">
+                              <v-simple-table 
+                                class="elevation-1" 
+                                id="sap_table_field_options" 
+                                style="max-height: 250px; overflow-y: scroll; overflow-y: auto !important">
                                 <template v-slot:default>
                                   <thead>
                                     <tr>
@@ -293,7 +356,9 @@
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    <tr v-for="(item, index) in sap_table_field_options" :class="index === editedOptionIndex ?  optionUnsaved ? 'red lighten-5' : 'blue lighten-5' : ''">
+                                    <tr v-for="(item, index) in sap_table_field_options" 
+                                        :class="index === editedOptionIndex ?  optionUnsaved || optionValueExists ? 'red lighten-5' : 'blue lighten-5' : ''
+                                    ">
                                       <td class="pa-2">{{ index + 1 }}</td>
 
                                       <!-- START Show Data if row is not for edit (show by default) -->
@@ -315,7 +380,76 @@
                                             :error-messages="optionValueErrors"
                                             @input="$v.editedOption.value.$touch() + (errorFields.value = '')"
                                             @blur="$v.editedOption.value.$touch()"
+                                            v-if="editedField.type === 'string' || editedField.type === ''"
                                           ></v-text-field>
+                                          <v-menu
+                                            ref="menu"
+                                            class="pa-0"
+                                            v-model="date_menu_option_value"
+                                            :close-on-content-click="false"
+                                            transition="scale-transition"
+                                            offset-y
+                                            min-width="auto"
+                                            v-if="editedField.type === 'date'"
+                                          >
+                                            <template v-slot:activator="{ on, attrs }">
+                                              <v-text-field
+                                                class="pa-0 ma-0"
+                                                v-model="computedOptionValueFormatted"
+                                                prepend-icon="mdi-calendar"
+                                                v-bind="attrs"
+                                                v-on="on"
+                                                hide-details=""
+                                                :error-messages="optionValueErrors"
+                                                @input="$v.editedOption.value.$touch() + (errorFields.value = '')"
+                                                @blur="$v.editedOption.value.$touch()"
+                                              ></v-text-field>
+                                            </template>
+                                            <v-date-picker
+                                              v-model="editedOption.value"
+                                              no-title
+                                              scrollable
+                                              @input="date_menu_option_value = false"
+                                            >
+                                            </v-date-picker>
+                                          </v-menu>
+                                          <v-text-field-integer
+                                            class="pa-0"
+                                            v-model="editedOption.value"
+                                            v-bind:properties="{
+                                              name: 'length',
+                                              placeholder: '0',
+                                              'hide-details': true,
+                                              dense: true,
+                                              error: $v.editedOption.value.$error,
+                                              messages: optionValueErrors,
+                                            }"
+                                            @input="$v.editedOption.value.$touch() + (errorFields.value = '')"
+                                            @blur="$v.editedOption.value.$touch()"
+                                            v-if="editedField.type === 'integer'"
+                                          >
+                                          </v-text-field-integer>
+                                          <v-text-field-money
+                                            class="pa-0"
+                                            v-model="editedOption.value"
+                                            v-bind:properties="{
+                                              name: 'length',
+                                              placeholder: '0',
+                                              'hide-details': true,
+                                              dense: true,
+                                              error: $v.editedOption.value.$error,
+                                              messages: optionValueErrors,
+                                            }"
+                                            v-bind:options="{
+                                              length: 11,
+                                              precision: 2,
+                                              empty: null,
+                                            }"
+                                            @input="$v.editedOption.value.$touch() + (errorFields.value = '')"
+                                            @blur="$v.editedOption.value.$touch()"
+                                            v-if="editedField.type === 'decimal'"
+                                          >
+                                          </v-text-field-money>
                                         </td>
                                         <td class="pa-2">
                                           <v-text-field
@@ -348,7 +482,7 @@
                                           <v-icon
                                             small
                                             color="red"
-                                            @click="showConfirmAlert('Options', item)"
+                                            @click="removeOptionRow(item)"
                                             :disabled="['Add', 'Edit'].includes(tableOptionsMode)"
                                           >
                                             mdi-delete
@@ -395,9 +529,9 @@
                                 outlined
                                 type="error"
                                 class="pa-1 mt-2 mb-0"
-                                v-if="optionUnsaved"
+                                v-if="optionListError.status || optionUnsaved"
                               >
-                                There are unsaved option data
+                                {{ optionListError.errorMsg }}
                               </v-alert>
                             </v-card-text>
                           </v-card>
@@ -480,7 +614,7 @@
                 <v-icon
                   small
                   color="red"
-                  @click="showConfirmAlert('Header', value)"
+                  @click="removeUDFRow('Header', value)"
                 >
                   mdi-delete
                 </v-icon>
@@ -519,7 +653,7 @@
                   <v-icon
                     small
                     color="red"
-                    @click="showConfirmAlert('Row', value)"
+                    @click="removeFieldRow(item)"
                   >
                     mdi-delete
                   </v-icon>
@@ -682,6 +816,8 @@ export default {
         field_name: "",
         value: "",
       },
+      date_menu_default_value: false,
+      date_menu_option_value: false,
     };
   },
 
@@ -768,6 +904,23 @@ export default {
 
     },
 
+    removeUDFRow() {},
+
+    deleteUDFTable(id) {
+      const data = { sap_table_id: id };
+      this.loading = true;
+      axios.post("/api/sap/udf/delete", data).then(
+        (response) => {
+          this.loading = false;
+          
+          this.showAlert(response.data.success);
+        },
+        (error) => {
+          this.isUnauthorized(error);
+        }
+      );
+    },
+
     storeUDFTable() {
       
       axios.post('/api/sap/udf/store', this.editedItem).then(
@@ -783,7 +936,7 @@ export default {
           else//if return object is table_name then get the error
           { 
             let object_name = Object.keys(data)[0]
-            this.errorFields[object_name] = data.table_name[0];
+            this.errorFields[object_name] = data.[object_name][0];
           }
         },
         (error) => {
@@ -823,12 +976,13 @@ export default {
       // get the index of latest pushed data 
       this.editedFieldIndex =  await this.sap_table_fields.length - 1;
 
-      await this.updateScroll();
+      // auto scroll down when adding an item
+      await this.updateScrollSAPFields();
 
     },
 
     saveField(){
-
+      
       // this.tableOptionsMode has value ('Add', 'Edit') then set this.optionUnsaved = true
       this.optionUnsaved = this.tableOptionsMode ? true : false;
 
@@ -836,8 +990,8 @@ export default {
       this.$v.editedOption.$touch();
 
       if(!this.$v.editedField.$error // if editedField has no error
-         && !this.optionListError // if optionListError (sap_table_field_options) has no error
-         && !this.tableOptionsMode // if tableOptionsMode not in  'Add' or 'Edit' mode
+         && !this.optionListError.status // if optionListError (sap_table_field_options) has no error
+         && !this.fieldListError.status // if field name does not exist
         )
       { 
 
@@ -906,12 +1060,28 @@ export default {
       this.sap_table_field_options = item.sap_table_field_options;
     },
 
+    removeFieldRow(item) {
+      let index = this.sap_table_fields.indexOf(item);
+      if(this.mode === 'Add')
+      {
+        this.sap_table_fields.splice(index, 1);
+      }
+      else
+      { 
+
+        this.showConfirmAlert('Row', item)
+        
+      }
+    },
+
     deleteField(id) {
-      const data = { roleid: roleid };
+      const data = { sap_table_field_id: id };
       this.loading = true;
-      axios.post("/api/role/delete", data).then(
+      axios.post("/api/sap/udf/delete_field", data).then(
         (response) => {
           this.loading = false;
+          
+          this.showAlert(response.data.success);
         },
         (error) => {
           this.isUnauthorized(error);
@@ -929,7 +1099,7 @@ export default {
       this.sap_table_field_options = [];
     },
 
-    newOptionItem() {
+    async newOptionItem() {
       this.resetOptionData();
       this.tableOptionsMode = "Add";
 
@@ -942,8 +1112,14 @@ export default {
       });
 
       if (!hasNew) {
-        this.sap_table_field_options.push({ status: "New" });
+        await this.sap_table_field_options.push({ status: "New" });
       }
+
+      // get the index of latest pushed data 
+      this.editedOptionIndex =  await this.sap_table_field_options.length - 1;
+
+      // auto scroll down when adding an item
+      await this.updateScrollFieldOptions();
 
     },
 
@@ -951,7 +1127,8 @@ export default {
       
       this.$v.editedOption.$touch();
 
-      if(!this.$v.editedOption.$error)
+      // if option value has no error and option value table has no error
+      if(!this.$v.editedOption.$error && !this.optionListError.status)
       {
         if(this.tableOptionsMode === 'Add')
         {
@@ -993,12 +1170,26 @@ export default {
       this.editedOptionIndex = this.sap_table_field_options.indexOf(item);
     },
 
+    removeOptionRow(item) {
+      let index = this.sap_table_field_options.indexOf(item);
+      if(this.mode === 'Add')
+      {
+        this.sap_table_field_options.splice(index, 1);
+      }
+      else
+      {
+        this.showConfirmAlert('Option', item)
+      }
+
+    },
+
     deleteOption(id) {
-      const data = { roleid: roleid };
+      const data = { sap_table_field_option_id: id };
       this.loading = true;
-      axios.post("/api/role/delete", data).then(
+      axios.post("/api/sap/udf/delete_option", data).then(
         (response) => {
           this.loading = false;
+          this.showAlert(response.data.success);
         },
         (error) => {
           this.isUnauthorized(error);
@@ -1058,8 +1249,13 @@ export default {
       }
     },
 
-    updateScroll() {
+    updateScrollSAPFields() {
       var element = document.getElementById("sap_table_fields");
+      element.scrollTop = element.scrollHeight;
+    },
+
+    updateScrollFieldOptions() {
+      var element = document.getElementById("sap_table_field_options");
       element.scrollTop = element.scrollHeight;
     },
 
@@ -1073,7 +1269,7 @@ export default {
       });
     },
 
-    showConfirmAlert(item, table) {
+    showConfirmAlert(table, item) {
       this.$swal({
         title: "Are you sure?",
         text: "You won't be able to revert this!",
@@ -1087,30 +1283,34 @@ export default {
 
         if (result.value) {
           // <-- if confirmed
-
-          const roleid = item.id;
-          const index = this.roles.indexOf(item);
-
-          //Call delete Role function
-          this.deleteRole(roleid);
-
-          //Remove item from array permissions
-          this.roles.splice(index, 1);
-
-          this.$swal({
-            position: "center",
-            icon: "success",
-            title: "Record has been deleted",
-            showConfirmButton: false,
-            timer: 2500,
-          });
+          
+          if(table === 'Header')
+          {
+            this.deleteUDFTable(item);
+          }
+          else if(table === 'Row')
+          {
+            this.deleteField(item);
+          }
+          else
+          {
+            this.deleteOption(item);
+          }
         }
+        
+
       });
     },
 
     close() {
       this.dialog = false;
       this.resetData();
+    },
+
+    formatDate(date) {
+      if (!date) return null;
+      const [year, month, day] = date.split("-");
+      return `${month}/${day}/${year}`;
     },
 
     isUnauthorized(error) {
@@ -1164,6 +1364,7 @@ export default {
       const errors = [];
       if (!this.$v.editedField.field_name.$dirty) return errors;
       if (this.errorFields.field_name) errors.push(this.errorFields.field_name);
+      if (this.fieldNameExists) errors.push('Field Name exists');
       !this.$v.editedField.field_name.required && errors.push("Field Name is required.");
       return errors;
     },
@@ -1189,6 +1390,7 @@ export default {
       const errors = [];
       if (!this.$v.editedOption.value.$dirty) return errors;
       if (this.errorFields.value) errors.push(this.errorFields.value);
+      if (this.optionValueExists) errors.push('Option Value exists');
       !this.$v.editedOption.value.required && errors.push("Option Value is required.");
       return errors;
     },
@@ -1221,21 +1423,118 @@ export default {
       return hasOptionList;
 
     },
+    fieldNameExists() {
+      let hasError = false;
+      this.sap_table_fields.forEach((value, index) => {
+        if(this.editedField.field_name === value.field_name && this.editedFieldIndex !== index)
+        {
+          hasError = true;
+        }
+      });
+      return hasError;
+    },
+    optionValueExists() {
+      let hasError = false;
+      this.sap_table_field_options.forEach((value, index) => {
+        if(this.editedOption.value === value.value && this.editedOptionIndex !== index)
+        {
+          hasError = true;
+        }
+      });
+      return hasError;
+    },
+    optionsTableValueInvalid() {
+      let invalid = false;
+      let type = this.editedField.type;
 
+      // validate if values from sap_table_field_options are valid depending on the sap table field type
+      this.sap_table_field_options.forEach((value, index) => {
+        if(type === 'integer')
+        {
+          invalid = parseInt(value.value) ? false : true;
+        }
+        else if(type === 'decimal')
+        {
+          invalid = parseFloat(value.value) ? false : true;
+        }
+        else if(type === 'date')
+        {
+          let dateString = value.value;
+          let timestamp = Date.parse(dateString);
+
+          invalid = isNaN(timestamp) ? true : false;
+        }
+      });
+
+      return invalid;
+    },
     fieldListError(){
-      //if sap_table_fields is empty then set error to true
-      return !this.sap_table_fields.length ? true : false;
-    },
+      let hasError = false;
+      // if sap_table_fields has no data then set true
+      hasError = !this.sap_table_fields.length ? true : this.fieldNameExists;
+      let errorMsg = "";
+      if(!this.sap_table_fields.length)
+      {
+        console.log('length');
+        errorMsg = "Table Fields is required!"
+        hasError = true;
+      }
+      else if(this.fieldNameExists)
+      {
+        console.log('fieldNameExists');
+        errorMsg = "Field Name exists!"
+        hasError = true;
+      }
+      else if(this.fieldUnsaved)
+      {
+        console.log('fieldUnsaved');
+        errorMsg = "There are unsaved data!"
+      }
 
-    optionListError(){
-      //if field has options and sap_table_field_options is empty then set error to true
-      return this.editedField.has_options && !this.sap_table_field_options.length ? true : false;
+      return { status: hasError, errorMsg: errorMsg };
     },
-    
+    optionListError(){
+
+      //if field has options and sap_table_field_options is empty then set error to true || option value exists || options table value invalid
+      let hasError = false;
+      // hasError = this.editedField.has_options && !this.sap_table_field_options.length ? true : this.optionValueExists ? true : this.optionsTableValueInvalid;
+      let errorMsg = "";
+      if(this.editedField.has_options && !this.sap_table_field_options.length)
+      {
+        errorMsg = "Options list is required!"
+        hasError = true;
+      }
+      else if(this.optionValueExists)
+      {
+        errorMsg = "Option Value exists!"
+         hasError = true;
+      }
+      else if(this.optionsTableValueInvalid)
+      {
+        errorMsg = "Options value is invalid! Must be type " + this.editedField.type;
+         hasError = true;
+      }
+      else if(this.optionUnsaved)
+      {
+        errorMsg = "There are unsaved data!"
+      }
+
+      return { status: hasError, errorMsg: errorMsg };
+    },
+    computedDefaultValueFormatted() {
+      return this.formatDate(this.editedField.default_value);
+    },
+    computedOptionValueFormatted() {
+      return this.formatDate(this.editedOption.value);
+    },
     ...mapState("userRolesPermissions", ["userRoles", "userPermissions"]),
   },
   watch: {
-   
+    "editedField.type"() {
+      this.editedField.length = "";
+      this.editedField.default_value = "";
+      this.editOption.value = "";
+    }
   },
   mounted() {
     axios.defaults.headers.common["Authorization"] =
