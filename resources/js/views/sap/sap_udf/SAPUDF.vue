@@ -107,7 +107,7 @@
                                   </thead>
                                   <tbody>
                                     <tr v-for="(item, index) in sap_table_fields" 
-                                        :class="index === editedFieldIndex ? fieldUnsaved || fieldNameExists ? 'red lighten-5' : 'blue lighten-5' : ''
+                                        :class="index === editedFieldIndex ? fieldListError.status ? 'red lighten-5' : 'blue lighten-5' : ''
                                     ">
                                       <td class="pa-2"> {{ index + 1 }} </td>
 
@@ -357,7 +357,7 @@
                                   </thead>
                                   <tbody>
                                     <tr v-for="(item, index) in sap_table_field_options" 
-                                        :class="index === editedOptionIndex ?  optionUnsaved || optionValueExists ? 'red lighten-5' : 'blue lighten-5' : ''
+                                        :class="index === editedOptionIndex ? optionListError.status || optionValueExists ? 'red lighten-5' : 'blue lighten-5' : ''
                                     ">
                                       <td class="pa-2">{{ index + 1 }}</td>
 
@@ -378,7 +378,7 @@
                                             hide-details
                                             required
                                             :error-messages="optionValueErrors"
-                                            @input="$v.editedOption.value.$touch() + (errorFields.value = '')"
+                                            @input="$v.editedOption.value.$touch()"
                                             @blur="$v.editedOption.value.$touch()"
                                             v-if="editedField.type === 'string' || editedField.type === ''"
                                           ></v-text-field>
@@ -401,7 +401,7 @@
                                                 v-on="on"
                                                 hide-details=""
                                                 :error-messages="optionValueErrors"
-                                                @input="$v.editedOption.value.$touch() + (errorFields.value = '')"
+                                                @input="$v.editedOption.value.$touch()"
                                                 @blur="$v.editedOption.value.$touch()"
                                               ></v-text-field>
                                             </template>
@@ -424,7 +424,7 @@
                                               error: $v.editedOption.value.$error,
                                               messages: optionValueErrors,
                                             }"
-                                            @input="$v.editedOption.value.$touch() + (errorFields.value = '')"
+                                            @input="$v.editedOption.value.$touch()"
                                             @blur="$v.editedOption.value.$touch()"
                                             v-if="editedField.type === 'integer'"
                                           >
@@ -445,7 +445,7 @@
                                               precision: 2,
                                               empty: null,
                                             }"
-                                            @input="$v.editedOption.value.$touch() + (errorFields.value = '')"
+                                            @input="$v.editedOption.value.$touch()"
                                             @blur="$v.editedOption.value.$touch()"
                                             v-if="editedField.type === 'decimal'"
                                           >
@@ -529,7 +529,7 @@
                                 outlined
                                 type="error"
                                 class="pa-1 mt-2 mb-0"
-                                v-if="optionListError.status || optionUnsaved"
+                                v-if="optionListError.status || optionUnsaved || optionsValueInvalid"
                               >
                                 {{ optionListError.errorMsg }}
                               </v-alert>
@@ -811,6 +811,7 @@ export default {
       fieldHasOptions: false,
       fieldUnsaved: false,
       optionUnsaved: false,
+      optionsValueInvalid: false,
       errorFields: {
         table_name: "",
         field_name: "",
@@ -853,18 +854,11 @@ export default {
       this.$v.editedItem.$touch();
       this.$v.editedField.$touch();
       this.$v.editedOption.$touch();
-      // console.log('this.$v.editedItem.$error', this.$v.editedItem.$error);
-      // console.log('this.fieldListError', this.fieldListError);
-      // console.log('this.tableFieldsMode', this.tableFieldsMode);
 
-      if(!this.$v.editedItem.$error // if editedItem has no error
-         && !this.fieldListError // if fieldListError (sap_table_fields) has no error or not empty
-         && !this.tableFieldsMode // if tableOptionsMode not in  'Add' or 'Edit' mode
-        )
+      // if editedItem has no error && if fieldListError.status not true
+      if(!this.$v.editedItem.$error && !this.fieldListError.status)
       { 
-
         this.storeUDFTable();
-
       }
 
     },
@@ -886,8 +880,6 @@ export default {
           description: item.description,
           type: item.type,
         });
-
-        console.log(item);
 
         this.sap_table_fields = item.sap_table_fields;
         
@@ -982,17 +974,18 @@ export default {
     },
 
     saveField(){
-      
+
       // this.tableOptionsMode has value ('Add', 'Edit') then set this.optionUnsaved = true
       this.optionUnsaved = this.tableOptionsMode ? true : false;
 
       this.$v.editedField.$touch();
       this.$v.editedOption.$touch();
 
-      if(!this.$v.editedField.$error // if editedField has no error
-         && !this.optionListError.status // if optionListError (sap_table_field_options) has no error
-         && !this.fieldListError.status // if field name does not exist
-        )
+      // validate options value (sap_table_field_options)
+      this.validateOptionList();
+      
+      // if editedField has no error && if optionListError (sap_table_field_options) has no error
+      if(!this.fieldListError.status && !this.optionListError.status && !this.optionsValueInvalid)
       { 
 
         if(this.mode === 'Add')
@@ -1140,11 +1133,15 @@ export default {
         {
           this.sap_table_field_options[this.editedOptionIndex] = this.editedOption;
         }
-
+        
         this.sap_table_fields[this.editedFieldIndex] = this.sap_table_field_options;
         this.sap_tables[this.editedIndex] = this.sap_table_fields;
         this.resetOptionData();
+        
       }
+      
+      // validate options value (sap_table_field_options)
+      this.validateOptionList();
     },
 
     storeOption() {
@@ -1165,9 +1162,33 @@ export default {
     },
 
     editOption(item) {
+      let type = this.editedField.type;
+      let isInvalid = false;
+
+      if(type === 'integer')
+      {
+        isInvalid = parseInt(item.value) ? false : true;
+      }
+      else if(type === 'decimal')
+      {
+        isInvalid = parseFloat(item.value) ? false : true;
+      }
+      else if(type === 'date')
+      {
+        let dateString = item.value;
+        let timestamp = Date.parse(dateString);
+
+        isInvalid = isNaN(timestamp) ? true : false;
+      }
+
+      this.editedOption.value = isInvalid ? "" : item.value;
+      
+      let rowData = Object.assign({}, item);
+
       this.tableOptionsMode = "Edit";
-      this.editedOption = Object.assign({}, item);
+      this.editedOption = Object.assign(rowData, { value: this.editedOption.value });
       this.editedOptionIndex = this.sap_table_field_options.indexOf(item);
+
     },
 
     removeOptionRow(item) {
@@ -1199,7 +1220,7 @@ export default {
 
     resetOptionData(){
       this.$v.editedOption.$reset();
-      this.editedOption = Object.assign({}, this.defaultField);
+      this.editedOption = Object.assign({}, this.defaultOption);
       this.editedOptionIndex = -1;
       this.tableOptionsMode = "";
       this.optionUnsaved = false;
@@ -1247,6 +1268,40 @@ export default {
         }
         
       }
+    },
+
+    validateOptionList() {
+
+      this.optionsValueInvalid = false;
+
+      let invalid = false;
+      let type = this.editedField.type;
+
+      // validate if values from sap_table_field_options are valid depending on the sap table field type
+      this.sap_table_field_options.forEach((value, index) => {
+
+        // if row has no status = New attribut/field name and value
+        if(!value.status){
+          if(type === 'integer')
+          {
+            invalid = parseInt(value.value) ? false : true;
+          }
+          else if(type === 'decimal')
+          {
+            invalid = parseFloat(value.value) ? false : true;
+          }
+          else if(type === 'date')
+          {
+            let dateString = value.value;
+            let timestamp = Date.parse(dateString);
+
+            invalid = isNaN(timestamp) ? true : false;
+          }
+        }
+        
+      });
+
+      this.optionsValueInvalid = invalid;
     },
 
     updateScrollSAPFields() {
@@ -1308,7 +1363,10 @@ export default {
     },
 
     formatDate(date) {
-      if (!date) return null;
+      let timestamp = Date.parse(date);
+
+      if (!date || isNaN(timestamp)) return null;
+    
       const [year, month, day] = date.split("-");
       return `${month}/${day}/${year}`;
     },
@@ -1443,51 +1501,25 @@ export default {
       });
       return hasError;
     },
-    optionsTableValueInvalid() {
-      let invalid = false;
-      let type = this.editedField.type;
-
-      // validate if values from sap_table_field_options are valid depending on the sap table field type
-      this.sap_table_field_options.forEach((value, index) => {
-        if(type === 'integer')
-        {
-          invalid = parseInt(value.value) ? false : true;
-        }
-        else if(type === 'decimal')
-        {
-          invalid = parseFloat(value.value) ? false : true;
-        }
-        else if(type === 'date')
-        {
-          let dateString = value.value;
-          let timestamp = Date.parse(dateString);
-
-          invalid = isNaN(timestamp) ? true : false;
-        }
-      });
-
-      return invalid;
-    },
+    
     fieldListError(){
       let hasError = false;
       // if sap_table_fields has no data then set true
-      hasError = !this.sap_table_fields.length ? true : this.fieldNameExists;
+    
       let errorMsg = "";
-      if(!this.sap_table_fields.length)
+
+      if(!this.sap_table_fields.length || this.$v.editedField.$error)
       {
-        console.log('length');
         errorMsg = "Table Fields is required!"
         hasError = true;
       }
       else if(this.fieldNameExists)
       {
-        console.log('fieldNameExists');
         errorMsg = "Field Name exists!"
         hasError = true;
       }
       else if(this.fieldUnsaved)
       {
-        console.log('fieldUnsaved');
         errorMsg = "There are unsaved data!"
       }
 
@@ -1497,7 +1529,7 @@ export default {
 
       //if field has options and sap_table_field_options is empty then set error to true || option value exists || options table value invalid
       let hasError = false;
-      // hasError = this.editedField.has_options && !this.sap_table_field_options.length ? true : this.optionValueExists ? true : this.optionsTableValueInvalid;
+      // hasError = this.editedField.has_options && !this.sap_table_field_options.length ? true : this.optionValueExists ? true : this.optionsValueInvalid;
       let errorMsg = "";
       if(this.editedField.has_options && !this.sap_table_field_options.length)
       {
@@ -1507,12 +1539,11 @@ export default {
       else if(this.optionValueExists)
       {
         errorMsg = "Option Value exists!"
-         hasError = true;
+        hasError = true;
       }
-      else if(this.optionsTableValueInvalid)
+      else if(this.optionsValueInvalid)
       {
         errorMsg = "Options value is invalid! Must be type " + this.editedField.type;
-         hasError = true;
       }
       else if(this.optionUnsaved)
       {
@@ -1527,13 +1558,17 @@ export default {
     computedOptionValueFormatted() {
       return this.formatDate(this.editedOption.value);
     },
+    
     ...mapState("userRolesPermissions", ["userRoles", "userPermissions"]),
   },
   watch: {
     "editedField.type"() {
       this.editedField.length = "";
       this.editedField.default_value = "";
-      this.editOption.value = "";
+      this.editedOption.value = "";
+
+      // validate options value (sap_table_field_options)
+      this.validateOptionList();
     }
   },
   mounted() {
