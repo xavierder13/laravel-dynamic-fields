@@ -106,9 +106,7 @@
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    <tr v-for="(item, index) in sap_table_fields" 
-                                        :class="index === editedFieldIndex ? fieldListError.status ? 'red lighten-5' : 'blue lighten-5' : ''
-                                    ">
+                                    <tr v-for="(item, index) in sap_table_fields" :class="rowFieldColor(index)">
                                       <td class="pa-2"> {{ index + 1 }} </td>
 
                                       <!-- START Show Data if row is not for edit (show by default) -->
@@ -357,8 +355,7 @@
                                   </thead>
                                   <tbody>
                                     <tr v-for="(item, index) in sap_table_field_options" 
-                                        :class="index === editedOptionIndex ? optionListError.status || optionValueExists ? 'red lighten-5' : 'blue lighten-5' : ''
-                                    ">
+                                        :class="rowOptionColor(index)">
                                       <td class="pa-2">{{ index + 1 }}</td>
 
                                       <!-- START Show Data if row is not for edit (show by default) -->
@@ -1369,6 +1366,14 @@ export default {
     
       const [year, month, day] = date.split("-");
       return `${month}/${day}/${year}`;
+    },
+
+    rowFieldColor(index){
+      return index === this.editedFieldIndex ? this.fieldListError.status ? 'red lighten-5' : 'blue lighten-5' : ''
+    },
+
+    rowOptionColor(index){
+      return index === this.editedOptionIndex ? this.optionListError.status || this.optionValueExists ? 'red lighten-5' : 'blue lighten-5' : ''
     },
 
     isUnauthorized(error) {
