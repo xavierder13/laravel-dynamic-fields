@@ -1307,7 +1307,7 @@ export default {
       this.optionsValueInvalid = invalid;
     },
 
-    logicalConditionOptionValue(value) {
+    conditionalStatement(value) {
       let type = this.editedField.type;
       let invalid = false;
       let spChars1 = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/; //all special characters
