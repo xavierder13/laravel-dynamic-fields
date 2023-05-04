@@ -851,8 +851,8 @@ export default {
       this.$v.editedField.$touch();
       this.$v.editedOption.$touch();
 
-      // if editedItem has no error && if fieldListError.status not true
-      if(!this.$v.editedItem.$error && !this.fieldListError.status)
+      // if editedItem has no error && if fieldListError.status not true &&
+      if(!this.$v.editedItem.$error && !this.fieldListError.status && !this.fieldUnsaved)
       { 
         this.storeUDFTable();
       }
@@ -1165,11 +1165,11 @@ export default {
       if(type === 'integer')
       {
         // validate integer with whole number only without period (.)
-        invalid = parseInt(item.value) && !spChars1.test(item.value) ? false : true;
+        isInvalid = parseInt(item.value) && !spChars1.test(item.value) ? false : true;
       }
       else if(type === 'decimal')
       {
-        invalid = parseFloat(item.value) && !spChars2.test(item.value) ? false : true;
+        isInvalid = parseFloat(item.value) && !spChars2.test(item.value) ? false : true;
       }
       else if(type === 'date')
       {
