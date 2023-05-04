@@ -309,11 +309,11 @@ export default {
     ...mapState("userRolesPermissions", ["userRoles", "userPermissions"]),
   },
   watch: {
-    isIdle(){
-      if (this.isIdle) {
-        this.sessionExpiredSwal();
-      }
-    }
+    // isIdle(){
+    //   if (this.isIdle) {
+    //     this.sessionExpiredSwal();
+    //   }
+    // }
   },
 
   mounted() {

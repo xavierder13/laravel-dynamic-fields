@@ -354,8 +354,7 @@
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    <tr v-for="(item, index) in sap_table_field_options" 
-                                        :class="rowOptionColor(index)">
+                                    <tr v-for="(item, index) in sap_table_field_options" :class="rowOptionColor(index)">
                                       <td class="pa-2">{{ index + 1 }}</td>
 
                                       <!-- START Show Data if row is not for edit (show by default) -->
@@ -1058,9 +1057,7 @@ export default {
       }
       else
       { 
-
         this.showConfirmAlert('Row', item)
-        
       }
     },
 
@@ -1161,14 +1158,18 @@ export default {
     editOption(item) {
       let type = this.editedField.type;
       let isInvalid = false;
-
+      
+      let spChars1 = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/; //all special characters
+      let spChars2 = /[!@#$%^&*()_+\-=\[\]{};':"\\|,<>\/?]+/; //all special characters whithout period/dot (.)
+    
       if(type === 'integer')
       {
-        isInvalid = parseInt(item.value) ? false : true;
+        // validate integer with whole number only without period (.)
+        invalid = parseInt(item.value) && !spChars1.test(item.value) ? false : true;
       }
       else if(type === 'decimal')
       {
-        isInvalid = parseFloat(item.value) ? false : true;
+        invalid = parseFloat(item.value) && !spChars2.test(item.value) ? false : true;
       }
       else if(type === 'date')
       {
@@ -1179,7 +1180,7 @@ export default {
       }
 
       this.editedOption.value = isInvalid ? "" : item.value;
-      
+
       let rowData = Object.assign({}, item);
 
       this.tableOptionsMode = "Edit";
@@ -1274,18 +1275,23 @@ export default {
       let invalid = false;
       let type = this.editedField.type;
 
+      let spChars1 = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/; //all special characters
+      let spChars2 = /[!@#$%^&*()_+\-=\[\]{};':"\\|,<>\/?]+/; //all special characters whithout period/dot (.)
+      
+
       // validate if values from sap_table_field_options are valid depending on the sap table field type
       this.sap_table_field_options.forEach((value, index) => {
-
+        
         // if row has no status = New attribut/field name and value
         if(!value.status){
           if(type === 'integer')
-          {
-            invalid = parseInt(value.value) ? false : true;
+          { 
+            // validate integer with whole number only without period (.)
+            invalid = parseInt(value.value) && !spChars1.test(value.value) ? false : true;
           }
           else if(type === 'decimal')
           {
-            invalid = parseFloat(value.value) ? false : true;
+            invalid = parseFloat(value.value) && !spChars2.test(value.value) ? false : true;
           }
           else if(type === 'date')
           {
@@ -1299,6 +1305,31 @@ export default {
       });
 
       this.optionsValueInvalid = invalid;
+    },
+
+    logicalConditionOptionValue(value) {
+      let type = this.editedField.type;
+      let invalid = false;
+      let spChars1 = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/; //all special characters
+      let spChars2 = /[!@#$%^&*()_+\-=\[\]{};':"\\|,<>\/?]+/; //all special characters whithout period/dot (.)
+
+      if(type === 'integer')
+      { 
+        // validate integer with whole number only without period (.)
+        invalid = parseInt(value.value) && !spChars1.test(value.value) ? false : true;
+      }
+      else if(type === 'decimal')
+      {
+        invalid = parseFloat(value.value) && !spChars2.test(value.value) ? false : true;
+      }
+      else if(type === 'date')
+      {
+        let dateString = value.value;
+        let timestamp = Date.parse(dateString);
+
+        invalid = isNaN(timestamp) ? true : false;
+      }
+      return invalid;
     },
 
     updateScrollSAPFields() {
@@ -1369,11 +1400,29 @@ export default {
     },
 
     rowFieldColor(index){
+      // if edit mode then set the color of edited row into 'red lighten-5' or 'blue lighten-5' else ''
       return index === this.editedFieldIndex ? this.fieldListError.status ? 'red lighten-5' : 'blue lighten-5' : ''
     },
 
     rowOptionColor(index){
-      return index === this.editedOptionIndex ? this.optionListError.status || this.optionValueExists ? 'red lighten-5' : 'blue lighten-5' : ''
+
+      let className = '';
+
+      // if edit mode then set the color of edited row into 'red lighten-5' or 'blue lighten-5'
+      if(index === this.editedOptionIndex)
+      { 
+        // if this.optionListError.status is true or this.optionValueExists is true then set 'red lighten-5' else 'blue lighten-5'
+        className = this.optionListError.status || this.optionValueExists ? 'red lighten-5' : 'blue lighten-5';
+      }
+      else
+      {
+        // if this.optionsValueInvalid is true then set 'red lighten-5' else ''
+        className = this.optionsValueInvalid ? 'red lighten-5' : '';
+      }
+
+      return className;
+
+      // return index === this.editedOptionIndex ? this.optionListError.status || this.optionValueExists ? 'red lighten-5' : 'blue lighten-5' : this.optionsValueInvalid ? 'red lighten-5' : '';
     },
 
     isUnauthorized(error) {
