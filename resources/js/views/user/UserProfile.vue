@@ -308,7 +308,6 @@ export default {
       }
     },
     ...mapState("auth", ["user", "userIsLoaded"]),
-    ...mapState("userRolesPermissions", ["userRoles", "userPermissions"]),
   },
   mounted() {
     axios.defaults.headers.common["Authorization"] =

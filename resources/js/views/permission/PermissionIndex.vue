@@ -18,7 +18,7 @@
               append-icon="mdi-magnify"
               label="Search"
               single-line
-              v-if="userPermissions.permission_list"
+              v-if="hasPermission('permission-list')"
             ></v-text-field>
             <template>
               <v-toolbar flat>
@@ -29,7 +29,7 @@
                   dark
                   class="mb-2"
                   @click="clear() + (dialog = true)"
-                  v-if="userPermissions.permission_create"
+                  v-if="hasPermission('permission-create')"
                 >
                   <v-icon>mdi-plus</v-icon>
                 </v-btn>
@@ -82,7 +82,7 @@
             :search="search"
             :loading="loading"
             loading-text="Loading... Please wait"
-            v-if="userPermissions.permission_list"
+            v-if="hasPermission('permission-list')"
           >
             <template v-slot:item.actions="{ item }">
               <v-icon
@@ -90,7 +90,7 @@
                 class="mr-2"
                 color="green"
                 @click="editPermission(item)"
-                v-if="userPermissions.permission_edit"
+                v-if="hasPermission('permission-edit')"
               >
                 mdi-pencil
               </v-icon>
@@ -98,7 +98,7 @@
                 small
                 color="red"
                 @click="showConfirmAlert(item)"
-                v-if="userPermissions.permission_delete"
+                v-if="hasPermission('permission-delete')"
               >
                 mdi-delete
               </v-icon>
@@ -114,7 +114,7 @@
 import axios from "axios";
 import { validationMixin } from "vuelidate";
 import { required, maxLength, email } from "vuelidate/lib/validators";
-import { mapState } from 'vuex';
+import { mapState, mapGetters } from 'vuex';
 
 export default {
 
@@ -372,7 +372,7 @@ export default {
         errors.push("Permission is required.");
       return errors;
     },
-    ...mapState("userRolesPermissions", ["userRoles", "userPermissions"]),
+    ...mapGetters("userRolesPermissions", ["hasRole", "hasPermission"]),
   },
   mounted() {
     axios.defaults.headers.common["Authorization"] =

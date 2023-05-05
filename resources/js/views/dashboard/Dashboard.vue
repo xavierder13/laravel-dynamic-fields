@@ -22,7 +22,7 @@
 import axios from "axios";
 import { validationMixin } from "vuelidate";
 import { required, maxLength, email } from "vuelidate/lib/validators";
-import { mapState } from 'vuex';
+import { mapState, mapGetters } from 'vuex';
 
 export default {
 
@@ -96,12 +96,12 @@ export default {
     },
   },
   computed: {
-    ...mapState("userRolesPermissions", ["userRoles", "userPermissions"]),
+    ...mapGetters("userRolesPermissions", ["hasRole", "hasPermission"]),
   },
   mounted() {
     axios.defaults.headers.common["Authorization"] = "Bearer " + localStorage.getItem("access_token");
 
-    this.websocket();
+    // this.websocket();
   },
 };
 </script>

@@ -106,7 +106,7 @@ Route::group(['prefix' => 'sap', 'middleware' => ['auth:api']], function(){
             'uses' => 'API\SAPUDFController@store',
             'as' => 'sap.udf.store',
         ]);
-        Route::post('/store_field', [
+        Route::post('/store_field/{id}', [
             'uses' => 'API\SAPUDFController@store_field',
             'as' => 'sap.udf.store.field',
         ]);

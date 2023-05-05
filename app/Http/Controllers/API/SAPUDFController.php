@@ -15,11 +15,14 @@ use Auth;
 // use Rule;
 
 class SAPUDFController extends Controller
-{
+{   
+
+    private $sap_table_id;
+    private $sap_table_field_id;
+    private $sap_table_field_option_id;
+
     public function index()
     {   
-
-
         $sap_tables = SapTable::with('sap_table_fields')
                               ->with('sap_table_fields.sap_table_field_options')
                               ->get();
@@ -91,24 +94,7 @@ class SAPUDFController extends Controller
     {   
         // START validate SAP Table
 
-        $valid_fields = [
-            'table_name' => 'required|max:64|unique:sap_tables,table_name',
-            'description' => 'required|max:20',
-            'type' => 'required',
-            'sap_table_fields' => 'required'
-        ];
-
-        $rules = [
-            'table_name.required' => 'Table Name is required',
-            'table_name.max' => 'Table Name length must be less then 64 or equal',
-            'table_name.unique' => 'Table Name already exists',
-            'description.required' => 'Table Description is required',
-            'description.max' => 'Table Description maximum length exceeds, must be 20 characters and less',
-            'type.required' => 'Table Type is required',
-            'sap_table_fields.required' => 'Sap Table Fields are required',
-        ];
-
-        $validator = Validator::make($request->all(), $valid_fields, $rules);
+        $validator = $this->sap_table_validation($request->all());
 
         if($validator->fails())
         {
@@ -138,43 +124,10 @@ class SAPUDFController extends Controller
                 }
             }
             
-            $field_name = $value['field_name'];
-            $table_name = $request->get('table_name');
-            $valid_fields = [
-                'field_name' => 'required|max:64',
-                // 'field_name' => [
-                //     'required',
-                //     'max:64',
-                //     Rule::unique('sap_table_fields')->where(function ($query) use ($field_name, $sap_table_id) {
-                //         return $query->where('field_name', $field_name)
-                //                      ->where('sap_table_id', $sap_table_id);
-                //     }),
-                // ],
-                'description' => 'required|max:20',
-                'type' => 'required',
-            ];
-
-            $rules = [
-                'field_name.required' => 'Field Name is required',
-                'field_name.unique' => 'Field Name already exists',
-                'field_name.max' => 'Field Name length must be less then 64 or equal',
-                'description.required' => 'Field Description is required',
-                'description.max' => 'Field Description maximum length exceeds, must be 20 characters and less',
-                'type.required' => 'Field Type is required',
-            ];
-            
-            if($value['type'] === 'string')
-            {   
-                $valid_fields['length'] = 'required|numeric|between:1,255';
-                $rules['length.required'] = 'Field Length is required';
-                $rules['length.numeric'] = 'Field Length must be numeric';
-                $rules['length.digits_between'] = 'Field Length must be between 1 and 255';
-            }
-
-            $validator = Validator::make($value, $valid_fields, $rules);
+            $validator = $this->fields_validation($value);
 
             if($validator->fails())
-            {
+            { 
                 return response()->json($validator->errors(), 200);
             }
             
@@ -184,55 +137,25 @@ class SAPUDFController extends Controller
 
         // START validate SAP Table Field Options
         foreach ($sap_table_fields as $key => $value) {
-
+            $field_options = $value['sap_table_field_options'];
             // if row has_options is true or has value then validate sap table field options
             if($value['has_options'])
-            {
-                
+            {   
                 $field_type = $value['type'];
-                $numeric_data_types = ['integer', 'decimal'];
-                $value_validation = '';
-                $value_rules = [];
 
-                // if field type in ['integer', 'decimal'] then set validation into required|numeric
-                if(in_array($field_type, $numeric_data_types))
-                {
-                    $value_validation = 'required|numeric';
-                }
-                // if field type string required|max:255
-                else if($field_type === 'string')
-                {
-                    $value_validation = 'required|max:255';
-                }
-                // if field type date required|date_format:Y-m-d
-                else
-                {
-                    $value_validation = 'required|date_format:Y-m-d';
-                }
+                foreach ($field_options as $i => $val) {
 
-                $valid_fields = [
-                    '*.value' => $value_validation,
-                    '*.description' => 'required|max:20',
-                ];
-
-                $rules = [
-                    '*.value.required' => 'Field Name is required',
-                    '*.description.required' => 'Description is required',
-                    '*.description.max' => 'Option Description maximum length exceeds, must be 20 characters and less',
-                ];
-        
-        
-                $validator = Validator::make($value['sap_table_field_options'], $valid_fields, $rules);
-        
-                if($validator->fails())
-                {
-                    return response()->json($validator->errors(), 200);
+                    $validator = $this->options_validation($field_options, $field_type);
+                
+                    if($validator->fails())
+                    {
+                        return response()->json($validator->errors(), 200);
+                    }
                 }
             }
         }
         // END validate SAP Table Field Options
 
-        
         $sap_table = new SapTable();
         $sap_table->table_name = $request->get('table_name');    
         $sap_table->description = $request->get('description');
@@ -240,129 +163,177 @@ class SAPUDFController extends Controller
         // $sap_table->save();
 
         foreach ($sap_table_fields as $key => $value) {
-            $this->store_field($value);
+            $sap_table_field = $this->insert_field_data($value, $sap_table->id);
+            
+            $field_options = $value['sap_table_field_options'];
+
+            foreach ($field_options as $i => $val) {
+                $this->insert_option_data($val, $sap_table_field->id);
+            }
         }
 
+        $sap_table = SapTable::with('sap_table_fields')
+                             ->with('sap_table_fields.sap_table_field_options')
+                             ->where('id', '=', $sap_table->id)
+                             ->first();
+        
         return response()->json(['success' => 'Record has successfully added', 'sap_table' => $sap_table], 200);
+    }
+
+    public function sap_table_validation($item)
+    {
+        $valid_fields = [
+            'table_name' => 'required|max:64|unique:sap_tables,table_name',
+            'description' => 'required|max:20',
+            'type' => 'required',
+            'sap_table_fields' => 'required'
+        ];
+
+        $rules = [
+            'table_name.required' => 'Table Name is required',
+            'table_name.max' => 'Table Name length must be less then 64 or equal',
+            'table_name.unique' => 'Table Name already exists',
+            'description.required' => 'Table Description is required',
+            'description.max' => 'Table Description maximum length exceeds, must be 20 characters and less',
+            'type.required' => 'Table Type is required',
+            'sap_table_fields.required' => 'Sap Table Fields are required',
+        ];
+
+        $validator = Validator::make($item, $valid_fields, $rules);
+
+        return $validator;
     }
 
     public function store_field(Request $request)
     {   
-        $validator = Validator::make($request->all(), $valid_fields, $rules);
+        
+        $validator = $this->fields_validation($request);
 
-        if($validator->fails())
+        // if validation fails
+        if($validator>fails());
         {
             return response()->json($validator->errors(), 200);
         }
-        
-        $sap_table_field = new SapTableField();
-        $sap_table_field->field_name = $request->get('field_name');    
-        $sap_table_field->description = $request->get('description');
-        $sap_table_field->type = $request->get('type');  
-        $sap_table_field->length = $request->get('length'); 
-        $sap_table_field->default_value = $request->get('default_value'); 
-        $sap_table_field->has_options = $request->get('has_options'); 
-        $sap_table_field->is_required = $request->get('is_required'); 
-        // $sap_table->save();
 
-        // return response()->json(['success' => 'Record has successfully added', 'sap_table_field' => $sap_table_field], 200);
+        $sap_table_field = $this->insert_field_data($request, $request->get('sap_table_id'));
+
+        return response()->json(['success' => 'Record has successfully added', 'sap_table_field' => $sap_table_field], 200);
     }
 
-    public function fields_validation($sap_table_fields)
+    public function insert_field_data($item, $sap_table_id) {
+        
+        $sap_table_field = new SapTableField();
+        $sap_table_field->field_name = $item['field_name'];    
+        $sap_table_field->description = $item['description'];
+        $sap_table_field->type = $item['type'];  
+        $sap_table_field->length = $item['length']; 
+        $sap_table_field->default_value = $item['default_value']; 
+        $sap_table_field->has_options = $item['has_options']; 
+        $sap_table_field->is_required = $item['is_required']; 
+        // $sap_table_field->save();
+
+        return $sap_table_field;
+    }
+
+    public function fields_validation($item)
     {
-        //Validate of field_name has duplicates
-        foreach ($sap_table_fields as $key => $value) 
+
+        $valid_fields = [
+            'field_name' => 'required|max:64',
+            // 'field_name' => [
+            //     'required',
+            //     'max:64',
+            //     Rule::unique('sap_table_fields')->where(function ($query) use ($field_name, $sap_table_id) {
+            //         return $query->where('field_name', $field_name)
+            //                      ->where('sap_table_id', $sap_table_id);
+            //     }),
+            // ],
+            'description' => 'required|max:20',
+            'type' => 'required',
+        ];
+
+        $rules = [
+            'field_name.required' => 'Field Name is required',
+            'field_name.unique' => 'Field Name already exists',
+            'field_name.max' => 'Field Name length must be less then 64 or equal',
+            'description.required' => 'Field Description is required',
+            'description.max' => 'Field Description maximum length exceeds, must be 20 characters and less',
+            'type.required' => 'Field Type is required',
+        ];
+        
+        if($item['type'] === 'string')
         {   
-            foreach($sap_table_fields as $i => $val)
-            {   
-                // exclude current row for validation of duplicate
-                if($i !== $key)
-                {
-                    if($val['field_name'] === $value['field_name'])
-                    {
-                        return response()->json(['field_name' => 'Duplicate Field Name ' . $val['field_name'], 'index' => $i], 200);
-                    }
-                }
-            }
-            
-            $field_name = $value['field_name'];
-            $table_name = $request->get('table_name');
-            $valid_fields = [
-                'field_name' => 'required|max:64',
-                // 'field_name' => [
-                //     'required',
-                //     'max:64',
-                //     Rule::unique('sap_table_fields')->where(function ($query) use ($field_name, $sap_table_id) {
-                //         return $query->where('field_name', $field_name)
-                //                      ->where('sap_table_id', $sap_table_id);
-                //     }),
-                // ],
-                'description' => 'required|max:20',
-                'type' => 'required',
-            ];
-
-            $rules = [
-                'field_name.required' => 'Field Name is required',
-                'field_name.unique' => 'Field Name already exists',
-                'field_name.max' => 'Field Name length must be less then 64 or equal',
-                'description.required' => 'Field Description is required',
-                'description.max' => 'Field Description maximum length exceeds, must be 20 characters and less',
-                'type.required' => 'Field Type is required',
-            ];
-            
-            if($value['type'] === 'string')
-            {   
-                $valid_fields['length'] = 'required|numeric|between:1,255';
-                $rules['length.required'] = 'Field Length is required';
-                $rules['length.numeric'] = 'Field Length must be numeric';
-                $rules['length.digits_between'] = 'Field Length must be between 1 and 255';
-            }
-
-            $validator = Validator::make($value, $valid_fields, $rules);
-
-            if($validator->fails())
-            {
-                return response()->json($validator->errors(), 200);
-            }
-            
+            $valid_fields['length'] = 'required|numeric|between:1,255';
+            $rules['length.required'] = 'Field Length is required';
+            $rules['length.numeric'] = 'Field Length must be numeric';
+            $rules['length.digits_between'] = 'Field Length must be between 1 and 255';
         }
 
-        // END validate SAP Table Fields
+        $validator = Validator::make($item, $valid_fields, $rules);
+
+        return $validator;
     }
 
     public function store_option(Request $request)
     {   
-        
-        $rules = [
-            '*.value.required' => 'Field Name is required',
-            '*.description.unique' => 'Field Name already exists',
-        ];
+      
+        $field_type = $request->get('field_type');
 
-        $valid_fields = [
-            '*.value' => 'required',
-            '*.description' => 'required',
-        ];
+        $validator = $this->options_validation($request, $field_type);
 
-
-        $validator = Validator::make($request->all(), $valid_fields, $rules);
-
-        if($validator->fails())
+        // if validation fails
+        if($validator>fails());
         {
             return response()->json($validator->errors(), 200);
         }
-        
+
+        $sap_table_field_option = $this->insert_option_data($request, $request->get('sap_table_field_id'));
+
+        return response()->json(['success' => 'Record has successfully added', 'sap_table_field_option' => $sap_table_field_option], 200);
+     
+    }
+
+    public function insert_option_data($request, $field_type)
+    {   
         $sap_table_field_option = new SapTableField();
         $sap_table_field_option->field_name = $request->get('value');    
         $sap_table_field_option->description = $request->get('description');
+        // $sap_table_field_option->save();
 
-        // $sap_table->save();
-
-        // return response()->json(['success' => 'Record has successfully added', 'sap_table_field' => $sap_table_field], 200);
+        return $sap_table_field_option;
     }
 
     public function options_validation($sap_table_field_options)
     {
+        $numeric_data_types = ['integer', 'decimal'];
+        $value_validation = '';
 
+        // if field type in ['integer', 'decimal'] then set validation into required|numeric
+        if(in_array($field_type, $numeric_data_types))
+        {
+            $value_validation = 'required|numeric';
+        }
+        // if field type string required|max:255
+        else if($field_type === 'string')
+        {
+            $value_validation = 'required|max:255';
+        }
+        // if field type date required|date_format:Y-m-d
+        else
+        {
+            $value_validation = 'required|date_format:Y-m-d';
+        }
+
+        $valid_fields = [
+            'value' => $value_validation,
+            'description' => 'required|max:20',
+        ];
+
+        $rules = [
+            'value.required' => 'Field Name is required',
+            'description.required' => 'Description is required',
+            'description.max' => 'Option Description maximum length exceeds, must be 20 characters and less',
+        ];
     }
 
     public function edit(Request $request)

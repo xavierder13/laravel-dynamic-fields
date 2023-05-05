@@ -996,6 +996,9 @@ export default {
           }
           else
           {
+
+            let default_value = this.editedField.default_value;
+            this.editedField.default_value = this.dataIsInvalid(default_value) ? "" : default_value; // if data is valid then retain the current value else set into ""
             this.sap_table_fields[this.editedFieldIndex] = this.editedField;
           }
 
@@ -1023,9 +1026,15 @@ export default {
     },
     
     storeField() { 
-      let index = this.sap_table_fields.indexOf({ status: 'New' }); 
-      this.sap_table_fields.splice(index, 1);
-      this.sap_table_fields.push(this.editedField);
+
+      axios.post('/api/sap/udf/store_field/' + this.editedItem.id, this.editedField).then(
+        (response) => {
+          console.log(response);
+        }
+      );
+      // let index = this.sap_table_fields.indexOf({ status: 'New' }); 
+      // this.sap_table_fields.splice(index, 1);
+      // this.sap_table_fields.push(this.editedField);
     },
 
     updateField() {
@@ -1156,37 +1165,10 @@ export default {
     },
 
     editOption(item) {
-      let type = this.editedField.type;
-      let isInvalid = false;
-      
-      let spChars1 = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/; //all special characters
-      let spChars2 = /[!@#$%^&*()_+\-=\[\]{};':"\\|,<>\/?]+/; //all special characters whithout period/dot (.)
-    
-      if(type === 'integer')
-      {
-        // validate integer with whole number only without period (.)
-        isInvalid = parseInt(item.value) && !spChars1.test(item.value) ? false : true;
-      }
-      else if(type === 'decimal')
-      {
-        isInvalid = parseFloat(item.value) && !spChars2.test(item.value) ? false : true;
-      }
-      else if(type === 'date')
-      {
-        let dateString = item.value;
-        let timestamp = Date.parse(dateString);
-
-        isInvalid = isNaN(timestamp) ? true : false;
-      }
-
-      this.editedOption.value = isInvalid ? "" : item.value;
-
-      let rowData = Object.assign({}, item);
-
+      let value = this.dataIsInvalid(item.value) ? "" : item.value;
       this.tableOptionsMode = "Edit";
-      this.editedOption = Object.assign(rowData, { value: this.editedOption.value });
+      this.editedOption = Object.assign(item, { value: value });
       this.editedOptionIndex = this.sap_table_field_options.indexOf(item);
-
     },
 
     removeOptionRow(item) {
@@ -1272,34 +1254,13 @@ export default {
 
       this.optionsValueInvalid = false;
 
-      let invalid = false;
-      let type = this.editedField.type;
-
-      let spChars1 = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/; //all special characters
-      let spChars2 = /[!@#$%^&*()_+\-=\[\]{};':"\\|,<>\/?]+/; //all special characters whithout period/dot (.)
-      
+      let invalid = false;     
 
       // validate if values from sap_table_field_options are valid depending on the sap table field type
       this.sap_table_field_options.forEach((value, index) => {
-        
-        // if row has no status = New attribut/field name and value
-        if(!value.status){
-          if(type === 'integer')
-          { 
-            // validate integer with whole number only without period (.)
-            invalid = parseInt(value.value) && !spChars1.test(value.value) ? false : true;
-          }
-          else if(type === 'decimal')
-          {
-            invalid = parseFloat(value.value) && !spChars2.test(value.value) ? false : true;
-          }
-          else if(type === 'date')
-          {
-            let dateString = value.value;
-            let timestamp = Date.parse(dateString);
 
-            invalid = isNaN(timestamp) ? true : false;
-          }
+        if(!value.status){
+          invalid = this.dataIsInvalid(value.value);
         }
         
       });
@@ -1307,7 +1268,7 @@ export default {
       this.optionsValueInvalid = invalid;
     },
 
-    conditionalStatement(value) {
+    dataIsInvalid(value) {
       let type = this.editedField.type;
       let invalid = false;
       let spChars1 = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/; //all special characters
@@ -1316,15 +1277,15 @@ export default {
       if(type === 'integer')
       { 
         // validate integer with whole number only without period (.)
-        invalid = parseInt(value.value) && !spChars1.test(value.value) ? false : true;
+        invalid = parseInt(value) && !spChars1.test(value) ? false : true;
       }
       else if(type === 'decimal')
       {
-        invalid = parseFloat(value.value) && !spChars2.test(value.value) ? false : true;
+        invalid = parseFloat(value) && !spChars2.test(value) ? false : true;
       }
       else if(type === 'date')
       {
-        let dateString = value.value;
+        let dateString = value;
         let timestamp = Date.parse(dateString);
 
         invalid = isNaN(timestamp) ? true : false;
@@ -1617,9 +1578,11 @@ export default {
   },
   watch: {
     "editedField.type"() {
-      this.editedField.length = "";
-      this.editedField.default_value = "";
-      this.editedOption.value = "";
+      
+      if(this.editedField.type !== 'string') { this.editedField.length = ""; }
+      
+      let default_value = this.editedField.default_value;
+      this.editedField.default_value = this.dataIsInvalid(default_value) ? "" : default_value;
 
       // validate options value (sap_table_field_options)
       this.validateOptionList();
