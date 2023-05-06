@@ -16,11 +16,6 @@ use Auth;
 
 class SAPUDFController extends Controller
 {   
-
-    private $sap_table_id;
-    private $sap_table_field_id;
-    private $sap_table_field_option_id;
-
     public function index()
     {   
         $sap_tables = SapTable::with('sap_table_fields')
@@ -80,8 +75,10 @@ class SAPUDFController extends Controller
         //     }
                 
         // }
+
+        $parent_tables = SapTable::where('type', '=', 'Header')->get();
         
-        return response()->json(['sap_tables' => $sap_tables], 200);
+        return response()->json(['sap_tables' => $sap_tables, 'parent_tables' => $parent_tables], 200);
     }
 
     public function create()
@@ -145,7 +142,7 @@ class SAPUDFController extends Controller
 
                 foreach ($field_options as $i => $val) {
 
-                    $validator = $this->options_validation($field_options, $field_type);
+                    $validator = $this->options_validation($val, $field_type);
                 
                     if($validator->fails())
                     {
@@ -159,19 +156,21 @@ class SAPUDFController extends Controller
         $sap_table = new SapTable();
         $sap_table->table_name = $request->get('table_name');    
         $sap_table->description = $request->get('description');
-        $sap_table->type = $request->get('type');  
-        // $sap_table->save();
+        $sap_table->type = $request->get('type');
+        $sap_table->parent_table = $request->get('parent_table');
+        $sap_table->is_migrated = false;
+        $sap_table->save();
 
         foreach ($sap_table_fields as $key => $value) {
-            $sap_table_field = $this->insert_field_data($value, $sap_table->id);
+            $sap_table_field = $this->insert_field_data($value, $sap_table->id, $key);
             
             $field_options = $value['sap_table_field_options'];
-
+            
             foreach ($field_options as $i => $val) {
-                $this->insert_option_data($val, $sap_table_field->id);
+                $this->insert_option_data($val, $sap_table_field->id, $i);
             }
         }
-
+        
         $sap_table = SapTable::with('sap_table_fields')
                              ->with('sap_table_fields.sap_table_field_options')
                              ->where('id', '=', $sap_table->id)
@@ -184,7 +183,7 @@ class SAPUDFController extends Controller
     {
         $valid_fields = [
             'table_name' => 'required|max:64|unique:sap_tables,table_name',
-            'description' => 'required|max:20',
+            'description' => 'required|max:30',
             'type' => 'required',
             'sap_table_fields' => 'required'
         ];
@@ -194,10 +193,18 @@ class SAPUDFController extends Controller
             'table_name.max' => 'Table Name length must be less then 64 or equal',
             'table_name.unique' => 'Table Name already exists',
             'description.required' => 'Table Description is required',
-            'description.max' => 'Table Description maximum length exceeds, must be 20 characters and less',
+            'description.max' => 'Table Description maximum length exceeds, must be 30 characters and less',
             'type.required' => 'Table Type is required',
             'sap_table_fields.required' => 'Sap Table Fields are required',
         ];
+
+        // if table type is row then add validation for parent_table column
+        if($item['type'] === 'Row')
+        {
+            $valid_fields['parent_table'] = 'required|max:64';
+            $rules['parent_table.required'] = 'Parent Table is required';
+            $rules['parent_table.max'] = 'Table Name length must be less then 64 or equal';
+        }
 
         $validator = Validator::make($item, $valid_fields, $rules);
 
@@ -220,9 +227,13 @@ class SAPUDFController extends Controller
         return response()->json(['success' => 'Record has successfully added', 'sap_table_field' => $sap_table_field], 200);
     }
 
-    public function insert_field_data($item, $sap_table_id) {
-        
+    public function insert_field_data($item, $sap_table_id) 
+    {
+        $max_line_num = SapTableField::where('sap_table_id', '=', $sap_table_id)->max('line_num');
+        $line_num = $max_line_num ? $max_line_num + 1 : 0;
+
         $sap_table_field = new SapTableField();
+        $sap_table_field->sap_table_id = $sap_table_id;
         $sap_table_field->field_name = $item['field_name'];    
         $sap_table_field->description = $item['description'];
         $sap_table_field->type = $item['type'];  
@@ -230,7 +241,10 @@ class SAPUDFController extends Controller
         $sap_table_field->default_value = $item['default_value']; 
         $sap_table_field->has_options = $item['has_options']; 
         $sap_table_field->is_required = $item['is_required']; 
-        // $sap_table_field->save();
+        $sap_table_field->is_multiple = false;
+        $sap_table_field->is_migrated = false;
+        $sap_table_field->line_num = $line_num;
+        $sap_table_field->save();
 
         return $sap_table_field;
     }
@@ -248,7 +262,7 @@ class SAPUDFController extends Controller
             //                      ->where('sap_table_id', $sap_table_id);
             //     }),
             // ],
-            'description' => 'required|max:20',
+            'description' => 'required|max:30',
             'type' => 'required',
         ];
 
@@ -257,7 +271,7 @@ class SAPUDFController extends Controller
             'field_name.unique' => 'Field Name already exists',
             'field_name.max' => 'Field Name length must be less then 64 or equal',
             'description.required' => 'Field Description is required',
-            'description.max' => 'Field Description maximum length exceeds, must be 20 characters and less',
+            'description.max' => 'Field Description maximum length exceeds, must be 30 characters and less',
             'type.required' => 'Field Type is required',
         ];
         
@@ -293,18 +307,23 @@ class SAPUDFController extends Controller
      
     }
 
-    public function insert_option_data($request, $field_type)
+    public function insert_option_data($item, $sap_table_field_id)
     {   
-        $sap_table_field_option = new SapTableField();
-        $sap_table_field_option->field_name = $request->get('value');    
-        $sap_table_field_option->description = $request->get('description');
-        // $sap_table_field_option->save();
+        $max_line_num = SapTableFieldOption::where('sap_table_field_id', '=', $sap_table_field_id)->max('line_num');
+        $line_num = $max_line_num ? $max_line_num + 1 : 0;
+
+        $sap_table_field_option = new SapTableFieldOption();
+        $sap_table_field_option->sap_table_field_id = $sap_table_field_id; 
+        $sap_table_field_option->value = $item['value'];    
+        $sap_table_field_option->description = $item['description'];
+        $sap_table_field_option->line_num = $line_num;
+        $sap_table_field_option->save();
 
         return $sap_table_field_option;
     }
 
-    public function options_validation($sap_table_field_options)
-    {
+    public function options_validation($item, $field_type)
+    {   
         $numeric_data_types = ['integer', 'decimal'];
         $value_validation = '';
 
@@ -326,14 +345,18 @@ class SAPUDFController extends Controller
 
         $valid_fields = [
             'value' => $value_validation,
-            'description' => 'required|max:20',
+            'description' => 'required|max:30',
         ];
 
         $rules = [
             'value.required' => 'Field Name is required',
             'description.required' => 'Description is required',
-            'description.max' => 'Option Description maximum length exceeds, must be 20 characters and less',
+            'description.max' => 'Option Description maximum length exceeds, must be 30 characters and less',
         ];
+
+        $validator = Validator::make($item, $valid_fields, $rules);
+
+        return $validator;
     }
 
     public function edit(Request $request)

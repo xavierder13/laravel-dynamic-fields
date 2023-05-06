@@ -77,6 +77,27 @@
                               @blur="$v.editedItem.type.$touch()"
                             ></v-autocomplete>
                           </v-col>
+                          <v-col v-if="parentTableIsRequired">
+                            <v-autocomplete
+                              name="parent_table"
+                              :items="parent_tables"
+                              v-model="editedItem.parent_table"
+                              item-text="table_name"
+                              item-value="table_name"
+                              label="Parent Table"
+                              required
+                              :error-messages="parentTableErrors"
+                              @input="$v.editedItem.parent_table.$touch()"
+                              @blur="$v.editedItem.parent_table.$touch()"
+                            >
+                              <template slot="selection" slot-scope="data">
+                                {{ data.item.table_name + ' - ' + data.item.description }}
+                              </template>
+                              <template slot="item" slot-scope="data">
+                                {{ data.item.table_name + ' - ' + data.item.description }}
+                              </template>
+                            </v-autocomplete>
+                          </v-col>
                         </v-row>
                         <v-divider></v-divider>
                       </template>
@@ -686,6 +707,10 @@ export default {
       table_name: { required },
       description: { required },
       type: { required },
+      parent_table: { required: requiredIf(function () {
+            return this.parentTableIsRequired;
+          }),  
+      },
     },
     editedField: { 
       field_name: { required: requiredIf(function () {
@@ -736,6 +761,7 @@ export default {
       dialog: false,
       expanded: [],
       sap_tables: [],
+      parent_tables: [],
       editedIndex: -1,
       editedFieldIndex: -1,
       editedOptionIndex: -1,
@@ -823,8 +849,11 @@ export default {
       this.loading = true;
       axios.get("/api/sap/udf/index").then(
         (response) => {
-         
-          this.sap_tables = response.data.sap_tables;
+          
+          let data = response.data;
+          this.sap_tables = data.sap_tables;
+          this.parent_tables = data.parent_tables;
+          
           this.loading = false;
         },
         (error) => {
@@ -851,8 +880,8 @@ export default {
       this.$v.editedField.$touch();
       this.$v.editedOption.$touch();
 
-      // if editedItem has no error && if fieldListError.status not true &&
-      if(!this.$v.editedItem.$error && !this.fieldListError.status && !this.fieldUnsaved)
+      // if sapTableError is false && if fieldListError.status not true &&
+      if(!this.sapTableError && !this.fieldListError.status && !this.fieldUnsaved)
       { 
         this.storeUDFTable();
       }
@@ -910,7 +939,7 @@ export default {
     },
 
     storeUDFTable() {
-      
+      this.loading = true;
       axios.post('/api/sap/udf/store', this.editedItem).then(
         (response) => {
           console.log(response.data);
@@ -918,14 +947,19 @@ export default {
 
           if(data.success)
           {
-            let msg = data.success
+            this.sap_tables.push(data.sap_table);
             this.showAlert(data.success);
+            this.resetData();
+            this.dialog = false;
+            
           }
           else//if return object is table_name then get the error
           { 
-            let object_name = Object.keys(data)[0]
+            let object_name = Object.keys(data)[0];
             this.errorFields[object_name] = data.[object_name][0];
           }
+
+          this.loading = false;
         },
         (error) => {
           this.isUnauthorized(error);
@@ -1413,13 +1447,23 @@ export default {
         ? "New SAP Table Fields"
         : "Edit SAP Table Fields";
     },
+    sapTableError() {
+      return this.$v.editedItem.$error || this.tableNameIsInvalid;
+    },
     tableNameErrors() {
       const errors = [];
     
       if (!this.$v.editedItem.table_name.$dirty) return errors;
       if (this.errorFields.table_name) errors.push(this.errorFields.table_name);
+      if (this.tableNameIsInvalid) errors.push("Table Name must be alphanumeric only and starts with letter");
       !this.$v.editedItem.table_name.required && errors.push("Table Name is required.");
       return errors;
+    },
+    tableNameIsInvalid() {
+      let spChars = /[!@#$%^&*()+\-=\[\]{};':"\\|,.<>\/?]+/; //exclude (_)
+      let value = this.editedItem.table_name
+
+      return spChars.test(value) || /^\d/.test(value);
     },
     tableTypeErrors() {
       const errors = [];
@@ -1432,6 +1476,15 @@ export default {
       if (!this.$v.editedItem.description.$dirty) return errors;
       !this.$v.editedItem.description.required && errors.push("Description is required.");
       return errors;
+    },
+    parentTableErrors() {
+      const errors = [];
+      if (!this.$v.editedItem.parent_table.$dirty) return errors;
+      !this.$v.editedItem.parent_table.required && errors.push("Parent Table is required.");
+      return errors;
+    },
+    parentTableIsRequired() {
+      return this.editedItem.type === "Row";
     },
     fieldNameErrors(){
       const errors = [];
@@ -1593,6 +1646,7 @@ export default {
       "Bearer " + localStorage.getItem("access_token");
     this.getSAPUDF();
     // this.websocket();
+
   },
 };
 </script>

@@ -11,6 +11,7 @@ class SapTable extends Model
         'description', 
         'type',
         'is_migrated',
+        'parent_table',
     ];
 
     public function sap_table_fields()

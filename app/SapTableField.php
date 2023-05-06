@@ -16,6 +16,7 @@ class SapTableField extends Model
         'is_multiple',
         'is_required',
         'is_migrated',
+        'line_num',
     ];
 
     public function sap_table()
