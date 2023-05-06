@@ -12,6 +12,7 @@ use App\SapTableField;
 use App\SapTableFieldOption;
 use Validator;
 use Auth;
+use DB;
 // use Rule;
 
 class SAPUDFController extends Controller
@@ -92,7 +93,7 @@ class SAPUDFController extends Controller
     
         // START validate SAP Table
 
-        $validator = $this->sap_table_validation($request->all());
+        $validator = $this->sap_table_validation($request->all(), null);
 
         if($validator->fails())
         {
@@ -133,7 +134,7 @@ class SAPUDFController extends Controller
                 }
             }
             
-            $validator = $this->fields_validation($value);
+            $validator = $this->fields_validation($value, null);
 
             if($validator->fails())
             { 
@@ -154,7 +155,7 @@ class SAPUDFController extends Controller
 
                 foreach ($field_options as $i => $val) {
 
-                    $validator = $this->options_validation($val, $field_type);
+                    $validator = $this->options_validation($val, $field_type, null);
                 
                     if($validator->fails())
                     {
@@ -166,20 +167,16 @@ class SAPUDFController extends Controller
         // END validate SAP Table Field Options
 
         $sap_table = new SapTable();
-        $sap_table->table_name = $request->get('table_name');    
-        $sap_table->description = $request->get('description');
-        $sap_table->type = $request->get('type');
-        $sap_table->parent_table = $request->get('parent_table');
-        $sap_table->is_migrated = false;
-        $sap_table->save();
+        $sap_table = $this->save_table($sap_table, $request);
 
         foreach ($sap_table_fields as $key => $value) {
-            $sap_table_field = $this->insert_field_data($value, $sap_table->id, $key);
+            $sap_table_field = new SapTableField();
+            $sap_table_field = $this->save_field_data($sap_table_field, $value, $sap_table->id);
             
             $field_options = $value['sap_table_field_options'];
             
             foreach ($field_options as $i => $val) {
-                $this->insert_option_data($val, $sap_table_field->id, $i);
+                $this->save_option_data($val, $sap_table_field->id, $i);
             }
         }
         
@@ -191,7 +188,19 @@ class SAPUDFController extends Controller
         return response()->json(['success' => 'Record has successfully added', 'sap_table' => $sap_table], 200);
     }
 
-    public function sap_table_validation($item)
+    public function save_table($sap_table, $item)
+    {
+        $sap_table->table_name = $item['table_name'];
+        $sap_table->description = $item['description'];
+        $sap_table->type = $item['type'];
+        $sap_table->parent_table = $item['parent_table'];
+        $sap_table->is_migrated = false;
+        $sap_table->save();
+
+        return $sap_table;
+    }
+
+    public function sap_table_validation($item, $id)
     {
         $valid_fields = [
             'table_name' => 'required|max:64|unique:sap_tables,table_name',
@@ -210,6 +219,12 @@ class SAPUDFController extends Controller
             'sap_table_fields.required' => 'Sap Table Fields are required',
         ];
 
+        // if id is not null (update mode)
+        if($id)
+        {
+            $valid_fields['table_name'] = $valid_fields['table_name'] . ',' . $id;
+        }
+ 
         // if table type is row then add validation for parent_table column
         if($item['type'] === 'Row')
         {
@@ -226,25 +241,24 @@ class SAPUDFController extends Controller
     public function store_field(Request $request)
     {   
         
-        $validator = $this->fields_validation($request);
+        $validator = $this->fields_validation($request, null);
 
         // if validation fails
         if($validator>fails());
         {
             return response()->json($validator->errors(), 200);
         }
-
-        $sap_table_field = $this->insert_field_data($request, $request->get('sap_table_id'));
+        $sap_table_field = new SapTableField();
+        $sap_table_field = $this->save_field_data($sap_table_field, $request, $request->get('sap_table_id'));
 
         return response()->json(['success' => 'Record has successfully added', 'sap_table_field' => $sap_table_field], 200);
     }
 
-    public function insert_field_data($item, $sap_table_id) 
+    public function save_field_data($sap_table_field, $item, $sap_table_id) 
     {
         $max_line_num = SapTableField::where('sap_table_id', '=', $sap_table_id)->max('line_num');
         $line_num = $max_line_num ? $max_line_num + 1 : 0;
 
-        $sap_table_field = new SapTableField();
         $sap_table_field->sap_table_id = $sap_table_id;
         $sap_table_field->field_name = $item['field_name'];    
         $sap_table_field->description = $item['description'];
@@ -261,7 +275,7 @@ class SAPUDFController extends Controller
         return $sap_table_field;
     }
 
-    public function fields_validation($item)
+    public function fields_validation($item, $id)
     {
 
         $valid_fields = [
@@ -295,6 +309,12 @@ class SAPUDFController extends Controller
             $rules['length.digits_between'] = 'Field Length must be between 1 and 255';
         }
 
+        // if id is not null (update mode)
+        if($id)
+        {
+            $valid_fields['field_name'] = $valid_fields['field_name'] . ',' . $id;
+        }
+
         $validator = Validator::make($item, $valid_fields, $rules);
 
         return $validator;
@@ -305,26 +325,25 @@ class SAPUDFController extends Controller
       
         $field_type = $request->get('field_type');
 
-        $validator = $this->options_validation($request, $field_type);
+        $validator = $this->options_validation($request, $field_type, null);
 
         // if validation fails
         if($validator>fails());
         {
             return response()->json($validator->errors(), 200);
         }
-
-        $sap_table_field_option = $this->insert_option_data($request, $request->get('sap_table_field_id'));
+        $sap_table_field_option = new SapTableFieldOption();
+        $sap_table_field_option = $this->save_option_data($request, $request->get('sap_table_field_id'));
 
         return response()->json(['success' => 'Record has successfully added', 'sap_table_field_option' => $sap_table_field_option], 200);
      
     }
 
-    public function insert_option_data($item, $sap_table_field_id)
+    public function save_option_data($sap_table_field_option, $item, $sap_table_field_id)
     {   
         $max_line_num = SapTableFieldOption::where('sap_table_field_id', '=', $sap_table_field_id)->max('line_num');
         $line_num = $max_line_num ? $max_line_num + 1 : 0;
 
-        $sap_table_field_option = new SapTableFieldOption();
         $sap_table_field_option->sap_table_field_id = $sap_table_field_id; 
         $sap_table_field_option->value = $item['value'];    
         $sap_table_field_option->description = $item['description'];
@@ -334,7 +353,7 @@ class SAPUDFController extends Controller
         return $sap_table_field_option;
     }
 
-    public function options_validation($item, $field_type)
+    public function options_validation($item, $field_type, $id)
     {   
         $numeric_data_types = ['integer', 'decimal'];
         $value_validation = '';
@@ -366,6 +385,12 @@ class SAPUDFController extends Controller
             'description.max' => 'Option Description maximum length exceeds, must be 30 characters and less',
         ];
 
+        // if id is not null (update mode)
+        if($id)
+        {
+            $valid_fields['value'] = $valid_fields['value'] . ',' . $id;
+        }
+
         $validator = Validator::make($item, $valid_fields, $rules);
 
         return $validator;
@@ -389,49 +414,19 @@ class SAPUDFController extends Controller
     }
 
 
-    public function update(Request $request, $permissionid)
+    public function update(Request $request, $sap_table_id)
     {   
-        // validate table_name value
-        $string = $request->get('table_name');
+        $validator = $this->sap_table_validation($request->all(), $sap_table_id);
         
-        $startsNumeric = is_numeric($string[0]);
-        $hasSpclChars = preg_match('/[\'^£$%&*()}{@#~?><,|=+¬-]/', $string); //except ( _ )
-            
-        if($startsNumeric || $hasSpclChars)
-        {
-            return response()->json(['table_name' => 'Table Name must be alphanumeric only and starts with letter'], 200);
-        }  
-        
-        $rules = [
-            'name.required' => 'Please enter permission',
-            'name.unique' => 'Permission already exists'
-        ];
-
-        $validator = Validator::make($request->all(),[
-            'name' => 'required|unique:permissions,name,'.$permissionid
-        ], $rules);
-
         if($validator->fails())
         {
             return response()->json($validator->errors(), 200);
         }
 
-        $permission = Permission::find($permissionid);
+        $sap_table = SapTable::find($sap_table_id);
+        $sap_table = $this->save_table($sap_table, $request);
 
-        //if record is empty then display error page
-        if(empty($permission->id))
-        {
-            return abort(404, 'Not Found');
-        }
-
-        $permission->name = $request->get('name');
-        $permission->save();
-
-        return response()->json([
-            'success' => 'Record has been updated',
-            'user_roles' => $user_roles, 
-            'user_permissions' => $user_permissions]
-        );
+        return response()->json(['success' => 'Record has been updated', 'sap_table' => $sap_table], 200);
     }
 
     public function delete(Request $request)
