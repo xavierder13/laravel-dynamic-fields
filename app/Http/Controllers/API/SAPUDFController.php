@@ -88,7 +88,8 @@ class SAPUDFController extends Controller
 
 
     public function store(Request $request)
-    {   
+    {          
+    
         // START validate SAP Table
 
         $validator = $this->sap_table_validation($request->all());
@@ -97,6 +98,17 @@ class SAPUDFController extends Controller
         {
             return response()->json($validator->errors(), 200);
         }
+
+        // validate table_name value
+        $string = $request->get('table_name');
+        
+        $startsNumeric = is_numeric($string[0]);
+        $hasSpclChars = preg_match('/[\'^£$%&*()}{@#~?><,|=+¬-]/', $string); //except ( _ )
+
+        if($startsNumeric || $hasSpclChars)
+        {
+            return response()->json(['table_name' => 'Table Name must be alphanumeric only and starts with letter'], 200);
+        }        
 
         // END validate SAP Table
 
@@ -379,7 +391,17 @@ class SAPUDFController extends Controller
 
     public function update(Request $request, $permissionid)
     {   
-
+        // validate table_name value
+        $string = $request->get('table_name');
+        
+        $startsNumeric = is_numeric($string[0]);
+        $hasSpclChars = preg_match('/[\'^£$%&*()}{@#~?><,|=+¬-]/', $string); //except ( _ )
+            
+        if($startsNumeric || $hasSpclChars)
+        {
+            return response()->json(['table_name' => 'Table Name must be alphanumeric only and starts with letter'], 200);
+        }  
+        
         $rules = [
             'name.required' => 'Please enter permission',
             'name.unique' => 'Permission already exists'

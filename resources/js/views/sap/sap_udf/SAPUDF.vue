@@ -1461,8 +1461,9 @@ export default {
     },
     tableNameIsInvalid() {
       let spChars = /[!@#$%^&*()+\-=\[\]{};':"\\|,.<>\/?]+/; //exclude (_)
-      let value = this.editedItem.table_name
+      let value = this.editedItem.table_name;
 
+      // if value has special chars or value starts with number
       return spChars.test(value) || /^\d/.test(value);
     },
     tableTypeErrors() {
