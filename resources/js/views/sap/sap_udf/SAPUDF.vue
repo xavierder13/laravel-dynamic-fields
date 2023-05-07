@@ -39,7 +39,7 @@
                     <v-divider class="mt-0"></v-divider>
                     <v-card-text>
                       <!-- START Show Table Name, Description and Type if Edit mode for type Header or Add mode -->
-                      <template v-if=" (mode === 'Edit' && editedItem.id) || mode === 'Add'">
+                      <template v-if="(mode === 'Edit' && editedItem.id) || mode === 'Add'">
                         <v-row>
                           <v-col>
                             <v-text-field
@@ -337,7 +337,7 @@
                                   </tbody>
                                   <tfoot>
                                     <tr>
-                                      <td colspan="9" class="text-right">
+                                      <td colspan="9" class="text-right" v-if="editedItem.id || mode === 'Add'">
                                         <v-btn class="primary" x-small @click="newFieldItem()" :disabled="['Add', 'Edit'].includes(tableFieldsMode)">add item</v-btn>
                                       </td>
                                     </tr>
@@ -883,8 +883,16 @@ export default {
       // if sapTableError is false && if fieldListError.status not true &&
       if(!this.sapTableError && !this.fieldListError.status && !this.fieldUnsaved)
       { 
-        this.storeUDFTable();
+        if(this.mode === 'Add')
+        {
+          this.storeUDFTable();
+        }
+        else
+        {
+          this.updateUDFTable();
+        }
       }
+      
 
     },
 
@@ -899,13 +907,7 @@ export default {
       {
         this.editedIndex = this.sap_tables.indexOf(item);
 
-        this.editedItem = Object.assign({}, {
-          id: item.id,
-          table_name: item.table_name,
-          description: item.description,
-          type: item.type,
-        });
-
+        this.editedItem = Object.assign({}, item);
         this.sap_table_fields = item.sap_table_fields;
         
       }
@@ -918,7 +920,31 @@ export default {
     },
 
     updateUDFTable(){
+      this.loading = true;
+      axios.post('/api/sap/udf/update/'+this.editedItem.id, this.editedItem).then(
+        (response) => {
+          console.log(response.data);
+          let data = response.data;
 
+          if(data.success)
+          {
+            // this.sap_tables.push(data.sap_table);
+            // this.getSAPUDF();
+            this.showAlert(data.success);            
+          }
+          else//if return object is table_name then get the error
+          { 
+            let object_name = Object.keys(data)[0];
+            this.errorFields[object_name] = data.[object_name][0];
+          }
+
+          this.loading = false;
+        },
+        (error) => {
+          this.isUnauthorized(error);
+          console.log(error);
+        }
+      );
     },
 
     removeUDFRow() {},
@@ -947,7 +973,8 @@ export default {
 
           if(data.success)
           {
-            this.sap_tables.push(data.sap_table);
+            // this.sap_tables.push(data.sap_table);
+            this.getSAPUDF();
             this.showAlert(data.success);
             this.resetData();
             this.dialog = false;
@@ -1037,7 +1064,7 @@ export default {
           }
 
           this.editedItem.sap_table_fields = this.sap_table_fields;
-
+          this.resetFieldData();
         }
         else
         {
@@ -1053,26 +1080,71 @@ export default {
 
         }
 
-        this.resetFieldData();
-
       }
       
     },
     
     storeField() { 
+      const data = Object.assign(this.editedField, { 
+        sap_table_id: this.editedItem.id,
+        sap_table_field_options: this.sap_table_field_options, 
+      });
 
-      axios.post('/api/sap/udf/store_field/' + this.editedItem.id, this.editedField).then(
+      axios.post('/api/sap/udf/store_field', data).then(
         (response) => {
-          console.log(response);
+      
+          let data = response.data;
+
+          if(data.success)
+          {
+            let index = this.sap_table_fields.indexOf({ status: 'New' }); 
+            this.sap_table_fields.splice(index, 1);
+
+            // this.editedField = Object.assign(this.editedField, { sap_table_field_options: this.sap_table_field_options})
+            this.sap_table_fields.push(data.sap_table_field);
+            this.sap_tables[this.editedIndex] = this.sap_table_fields;
+
+            this.showAlert(data.success)
+
+            this.resetFieldData();
+          }
+          
+        },
+        (error) => {
+          this.isUnauthorized(error);
         }
       );
-      // let index = this.sap_table_fields.indexOf({ status: 'New' }); 
-      // this.sap_table_fields.splice(index, 1);
-      // this.sap_table_fields.push(this.editedField);
+      
     },
 
     updateField() {
-      this.sap_table_fields[this.editedFieldIndex] = this.editedField;
+      
+      this.loading = true;
+      axios.post('/api/sap/udf/update_field/'+this.editedField.id, this.editedField).then(
+        (response) => {
+          console.log(response.data);
+          let data = response.data;
+
+          if(data.success)
+          { 
+            this.sap_table_fields[this.editedFieldIndex] = this.editedField;
+            this.getSAPUDF();
+            this.showAlert(data.success);
+            this.resetFieldData();            
+          }
+          else//if return object is table_name then get the error
+          { 
+            let object_name = Object.keys(data)[0];
+            this.errorFields[object_name] = data.[object_name][0];
+          }
+
+          this.loading = false;
+        },
+        (error) => {
+          this.isUnauthorized(error);
+          console.log(error);
+        }
+      )
     },
 
     cancelFieldEvent(item) {
@@ -1182,6 +1254,7 @@ export default {
     },
 
     storeOption() {
+      const data = Object.assign(this.editedOption, { sap_table_field_id: this.editedField.id });
 
     },
 
@@ -1579,7 +1652,7 @@ export default {
 
       if(!this.sap_table_fields.length || this.$v.editedField.$error)
       {
-        errorMsg = "Table Fields is required!"
+        errorMsg = "Table Fields are required!"
         hasError = true;
       }
       else if(this.fieldNameExists)
