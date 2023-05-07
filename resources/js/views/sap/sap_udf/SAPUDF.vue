@@ -1068,15 +1068,7 @@ export default {
         }
         else
         {
-
-          if(this.tableFieldsMode === 'Add')
-          {
-            this.storeField();
-          }
-          else
-          {
-            this.updateField();
-          }
+          this.tableFieldsMode === 'Add' ? this.storeField() : this.updateField();
 
         }
 
