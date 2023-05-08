@@ -25,70 +25,10 @@ class SAPUDFController extends Controller
                               ->with('sap_table_fields.sap_table_field_options')
                               ->get();
         
-        // foreach ($sap_tables as $key => $value) {
-
-        //     $table_name = $value->table_name;
-        //     if (!Schema::hasTable($table_name)){
-
-        //         Schema::create($table_name, function (Blueprint $table) use ($value) {
-        //             $table->id();
-        //             foreach ($value->sap_table_fields as $field) {
-
-        //                 $table->{$field->type}($field->field_name, $field->length)->nullable($field->is_require ? false : true);
-        //             }
-        //             $table->timestamps();
-        //         });
-        //     }
-        //     else
-        //     {  
-        //         return response()->json(['error' => 'Table name '. strtolower($table_name) . ' already exists.'], 200);
-        //     }
-
-        // }
-
-        $table_name = 'oinv';
-
-        // if (Schema::hasTable($table_name)){
-            
-        //     $field_arr = [
-        //         'field_type' => 'string',
-        //         'field_name' => 'sub_cat_2',
-        //         'field_length' => 200,
-        //         'field_is_required' => true,
-        //     ];
-
-        //     if(!Schema::hasColumn($table_name, $field_arr['field_name']))
-        //     {   
-        //         Schema::table($table_name, function (Blueprint $table) use ($field_arr) {   
-
-        //             if($field_arr['field_type'] === 'integer')
-        //             {
-        //                 $table->{ $field_arr['field_type'] }( $field_arr['field_name'] )->nullable( $field_arr['field_is_required'] ? false : true );
-        //             }
-        //             else
-        //             {
-        //                 $table->{ $field_arr['field_type'] }( $field_arr['field_name'], $field_arr['field_length'] )->nullable( $field_arr['field_is_required'] ? false : true );
-        //             }
-
-        //         });
-        //     }
-        //     else
-        //     {
-        //         return response()->json(['error' => 'Columun ' . $field_arr['field_name'] . ' already exists.'], 200);
-        //     }
-                
-        // }
-
         $parent_tables = SapTable::where('type', '=', 'Header')->get();
         
         return response()->json(['sap_tables' => $sap_tables, 'parent_tables' => $parent_tables], 200);
     }
-
-    public function create()
-    {
-        return view('pages.permissions.create');
-    }
-
 
     public function store(Request $request)
     {          
@@ -339,8 +279,6 @@ class SAPUDFController extends Controller
                 'required',
                 'max:64',
                 Rule::unique('sap_table_fields')->where(function ($query) use ($field_name, $sap_table_id, $id) {
- 
-                    
                     if($id) //else if sap_table_field_id has value (update mode)
                     {
                         return $query->where('id','!=', $id)
@@ -382,14 +320,13 @@ class SAPUDFController extends Controller
 
     public function store_option(Request $request)
     {   
-      
         $field_type = $request->get('field_type');
 
         //params (values, sap_table_field type, sap_table_field_option_id)
-        $validator = $this->options_validation($request, $field_type, null);
+        $validator = $this->options_validation($request->all(), $field_type, null);
 
         // if validation fails
-        if($validator>fails());
+        if($validator->fails())
         {
             return response()->json($validator->errors(), 200);
         }
@@ -424,16 +361,16 @@ class SAPUDFController extends Controller
             'required',
             Rule::unique('sap_table_field_options')->where(function ($query) use ($value, $sap_table_field_id, $id) {
 
-                if($sap_table_field_id) //if sap_table_field_id has value
-                {
-                    return $query->where('value', $value)
-                                    ->where('sap_table_field_id', $sap_table_field_id);
-                }
-                else if($id) //else if sap_table_field_option_id has value (update mode)
+                if($id) //else if sap_table_field_option_id has value (update mode)
                 {
                     return $query->where('id','!=', $id)
-                                    ->where('value', $value)
-                                    ->where('sap_table_field_id', $sap_table_field_id);
+                                 ->where('value', $value)
+                                 ->where('sap_table_field_id', $sap_table_field_id);
+                }
+                elseif($sap_table_field_id) //if sap_table_field_id has value
+                {
+                    return $query->where('value', $value)
+                                 ->where('sap_table_field_id', $sap_table_field_id);
                 }
             }),
         ];
@@ -505,8 +442,6 @@ class SAPUDFController extends Controller
 
     public function update_field(Request $request, $sap_table_field_id)
     {   
-        // START validate SAP Table
-
         $validator = $this->fields_validation($request->all(), $sap_table_field_id);
     
         // if validation fails
@@ -515,12 +450,63 @@ class SAPUDFController extends Controller
             return response()->json($validator->errors(), 200);
         }
 
+        $field_options = $request->get('sap_table_field_options');
+        $field_type = $request->get('type');
+
+        //Validate if option value has duplicates
+        foreach ($field_options as $j => $option) {
+            foreach ($field_options as $k => $opts) {
+                if($k !== $j)
+                {
+                    if($option['value'] === $opts['value'])
+                    {
+                        return response()->json(['value' => 'Duplicate Option Vaue ' . $opts['value'], 'index' => $k], 200);
+                    }
+                }
+            }
+
+            //params (values, sap_table_field type, sap_table_field_option_id)
+            $validator = $this->options_validation($option, $field_type, null);
+                
+            if($validator->fails())
+            {
+                return response()->json($validator->errors(), 200);
+            }
+        }
+
         $sap_table_field = SapTableField::find($sap_table_field_id);
+        $has_options = $sap_table_field->has_options;
         $sap_table_field = $this->save_field_data($sap_table_field, $request, $request->get('sap_table_id'));
+
+        // if has_options field is for update then from false to true or 0 to 1 value
+        if(!$has_options && $request->get('has_options'))
+        {
+            foreach ($field_options as $i => $option) {
+                $sap_table_field_option = new SapTableFieldOption();
+                $sap_table_field_option = $this->save_option_data($sap_table_field_option, $option, $sap_table_field->id);
+            }
+        }
 
         $sap_table_field = SapTableField::with('sap_table_field_options')->where('id', '=', $sap_table_field->id)->first();
 
         return response()->json(['success' => 'Record has been updated', 'sap_table_field' => $sap_table_field], 200);
+    }
+
+    public function update_option(Request $request, $sap_table_field_option_id)
+    {   
+        //params (values, sap_table_field type, sap_table_field_option_id)
+        $validator = $this->options_validation($request->all(), $request->get('field_type'), $sap_table_field_option_id);
+    
+        // if validation fails
+        if($validator->fails())
+        {
+            return response()->json($validator->errors(), 200);
+        }
+
+        $field_option = SapTableFieldOption::find($sap_table_field_option_id);
+        $field_option = $this->save_option_data($field_option, $request, $request->get('sap_table_field_id'));
+
+        return response()->json(['success' => 'Record has been updated', 'sap_table_field_option' => $field_option], 200);
     }
 
     public function delete(Request $request)
@@ -534,15 +520,28 @@ class SAPUDFController extends Controller
             return abort(404, 'Not Found');
         }
 
+        // check if table name has values or record
+        $has_value = $this->has_value(['table_name' => $sap_table->table_name], 'Header');
+        
+        if($has_value)
+        {
+            return response()->json(['error', 'Cannot delete table. Table '.$sap_table->table_name.' has already used.'], 200);
+        }
+
         $sap_table->delete();
+
+        $sap_table_field =  SapTableField::where('sap_table_id', '=', $sap_table->id);
+        $sap_table_field_id = $sap_table_field->first()->id;
+        $sap_table_field->delete();
+        $sap_table_field_option = SapTableFieldOption::where('sap_table_field_id', '=', $sap_table_field_id)->delete();
 
         return response()->json(['success' => 'Record has been deleted'], 200);
     }
 
     public function delete_field(Request $request)
     {   
-        $sap_table_field_id = $request->get('sap_table_id');
-        $sap_table_field = SapTableField::find($sap_table_field_id);
+
+        $sap_table_field = SapTableField::find($request->get('sap_table_field_id'));
         
         //if record is empty then display error page
         if(empty($sap_table_field->id))
@@ -550,15 +549,29 @@ class SAPUDFController extends Controller
             return abort(404, 'Not Found');
         }
 
+        $sap_table = SapTable::find($sap_table_field->sap_table_id);
+
+        // check if table name has values or record
+        $has_value = $this->has_value([
+                                        'table_name' => $sap_table->table_name, 
+                                        'field_name' => $sap_table_field->field_name, 
+                                      ], 'Row' );
+        
+        if($has_value)
+        {
+            return response()->json(['error', 'Cannot delete Field. Field '.$sap_table_field->field_name.' has already used.'], 200);
+        }
+
         $sap_table_field->delete();
+        $sap_table_field_option = SapTableFieldOption::where('sap_table_field_id', '=', $sap_table_field->id)->delete();
 
         return response()->json(['success' => 'Record has been deleted'], 200);
     }
 
     public function delete_option(Request $request)
     {   
-        $sap_table_field_option_id = $request->get('sap_table_id');
-        $sap_table_field_option = SapTablefieldOption::find($sap_table_field_option_id);
+        
+        $sap_table_field_option = SapTableFieldOption::find($request->get('sap_table_field_option_id'));
         
         //if record is empty then display error page
         if(empty($sap_table_field_option->id))
@@ -566,12 +579,109 @@ class SAPUDFController extends Controller
             return abort(404, 'Not Found');
         }
 
+        $sap_table_field = SapTable::find($sap_table_field_option->sap_table_field_id);
+        $sap_table = SapTable::find($sap_table_field->sap_table_id);
+
+        // check if table name has values or record
+        $has_value = $this->has_value([
+                                        'table_name' => $sap_table->table_name, 
+                                        'field_name' => $sap_table_field->field_name, 
+                                        'option_value' => $sap_table_field_option->value,
+                                      ], 'Option');
+        
+        if($has_value)
+        {
+            return response()->json(['error', 'Cannot delete Field. Field '.$sap_table->table_name.' has already used.'], 200);
+        }
+
         $sap_table_field_option->delete();
 
         return response()->json(['success' => 'Record has been deleted'], 200);
     }
 
-    public function migrate(){
 
+    public function has_value($item, $type)
+    {   
+        $table_name = $item['table_name'];
+        $field_value = null;
+        if($type === 'Header')
+        {   
+            if(Schema::hasTable($table_name)) // if table exists
+            {
+                $field_value = DB::table($table_name)->max('id');
+            }
+        }
+        else if($type === 'Row')
+        {
+            if(Schema::hasColumn($table_name, $item['field_name'])) // if table exists
+            {
+                $field_value = DB::table($table_name)->max($item['field_name']);
+            }   
+        }
+        else
+        {
+            if(Schema::hasColumn($table_name, $field_name)) // if table exists
+            {
+                $field_value = DB::table($table_name)->where($item['field_name'], '=', $item['option_value'])->max($item['field_name']);
+            }  
+        }
+
+        return $field_value ? true : false;
+    }
+
+    public function migrate(){
+        foreach ($sap_tables as $key => $value) {
+
+            $table_name = $value->table_name;
+            if (!Schema::hasTable($table_name)){
+
+                Schema::create($table_name, function (Blueprint $table) use ($value) {
+                    $table->id();
+                    foreach ($value->sap_table_fields as $field) {
+
+                        $table->{$field->type}($field->field_name, $field->length)->nullable($field->is_required ? false : true);
+                    }
+                    $table->timestamps();
+                });
+            }
+            else
+            {  
+                return response()->json(['error' => 'Table name '. strtolower($table_name) . ' already exists.'], 200);
+            }
+
+        }
+
+        $table_name = 'sap_tables';
+
+        if (Schema::hasTable($table_name)){
+            
+            $field_arr = [
+                'field_type' => 'string',
+                'field_name' => 'sub_cat_2',
+                'field_length' => 200,
+                'field_is_required' => true,
+            ];
+
+            if(!Schema::hasColumn($table_name, $field_arr['field_name']))
+            {   
+                Schema::table($table_name, function (Blueprint $table) use ($field_arr) {   
+
+                    if($field_arr['field_type'] === 'integer')
+                    {
+                        $table->{ $field_arr['field_type'] }( $field_arr['field_name'] )->nullable( $field_arr['field_is_required'] ? false : true );
+                    }
+                    else
+                    {
+                        $table->{ $field_arr['field_type'] }( $field_arr['field_name'], $field_arr['field_length'] )->nullable( $field_arr['field_is_required'] ? false : true );
+                    }
+
+                });
+            }
+            else
+            {
+                return response()->json(['error' => 'Columun ' . $field_arr['field_name'] . ' already exists.'], 200);
+            }
+                
+        }
     }
 }

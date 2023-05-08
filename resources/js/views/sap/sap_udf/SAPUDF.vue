@@ -631,7 +631,7 @@
                 <v-icon
                   small
                   color="red"
-                  @click="removeUDFRow('Header', value)"
+                  @click="showConfirmAlert('Header', items[0])"
                 >
                   mdi-delete
                 </v-icon>
@@ -849,7 +849,7 @@ export default {
       this.loading = true;
       axios.get("/api/sap/udf/index").then(
         (response) => {
-          
+          console.log(response.data);
           let data = response.data;
           this.sap_tables = data.sap_tables;
           this.parent_tables = data.parent_tables;
@@ -921,8 +921,10 @@ export default {
 
     updateUDFTable(){
       this.loading = true;
+      this.disabled = true;
       axios.post('/api/sap/udf/update/'+this.editedItem.id, this.editedItem).then(
         (response) => {
+          this.disabled = false;
           console.log(response.data);
           let data = response.data;
 
@@ -943,20 +945,33 @@ export default {
         (error) => {
           this.isUnauthorized(error);
           console.log(error);
+          this.disabled = false;
+          this.loading = false;
         }
       );
     },
 
     removeUDFRow() {},
 
-    deleteUDFTable(id) {
-      const data = { sap_table_id: id };
+    deleteUDFTable(item) {
+      const data = { sap_table_id: item.id };
       this.loading = true;
       axios.post("/api/sap/udf/delete", data).then(
         (response) => {
           this.loading = false;
+          let data = response.data;
+
+          if(data.success)
+          {
+            this.showAlert(data.success);
+            let index = this.sap_tables.indexOf(item);
+            this.sap_tables.splice(index, 1);
+          }
+          else
+          {
+            this.showErrorAlert(data.error);
+          }
           
-          this.showAlert(response.data.success);
         },
         (error) => {
           this.isUnauthorized(error);
@@ -966,8 +981,10 @@ export default {
 
     storeUDFTable() {
       this.loading = true;
+      this.disabled = true;
       axios.post('/api/sap/udf/store', this.editedItem).then(
         (response) => {
+          this.disabled = false;
           console.log(response.data);
           let data = response.data;
 
@@ -978,7 +995,6 @@ export default {
             this.showAlert(data.success);
             this.resetData();
             this.dialog = false;
-            
           }
           else//if return object is table_name then get the error
           { 
@@ -987,10 +1003,13 @@ export default {
           }
 
           this.loading = false;
+          
         },
         (error) => {
           this.isUnauthorized(error);
           console.log(error);
+          this.disabled = false;
+          this.loading = false;
         }
       )
     },
@@ -1044,7 +1063,6 @@ export default {
       // if editedField has no error && if optionListError (sap_table_field_options) has no error
       if(!this.fieldListError.status && !this.optionListError.status && !this.optionsValueInvalid)
       { 
-
         if(this.mode === 'Add')
         {
           if(this.tableFieldsMode === 'Add')
@@ -1077,6 +1095,7 @@ export default {
     },
     
     storeField() { 
+      this.disabled = true;
       const data = Object.assign(this.editedField, { 
         sap_table_id: this.editedItem.id,
         sap_table_field_options: this.sap_table_field_options, 
@@ -1084,7 +1103,7 @@ export default {
 
       axios.post('/api/sap/udf/store_field', data).then(
         (response) => {
-      
+          this.disabled = false;
           let data = response.data;
 
           if(data.success)
@@ -1096,30 +1115,38 @@ export default {
             this.sap_table_fields.push(data.sap_table_field);
             this.sap_tables[this.editedIndex] = this.sap_table_fields;
 
-            this.showAlert(data.success)
-
+            this.showAlert(data.success);
             this.resetFieldData();
           }
-          
+          else//if return object is table_name then get the error
+          { 
+            let object_name = Object.keys(data)[0];
+            this.errorFields[object_name] = data.[object_name][0];
+          }
+
         },
         (error) => {
           this.isUnauthorized(error);
+          this.disabled = false;
+          this.loading = false;
         }
       );
       
     },
 
     updateField() {
-      
+      const data = Object.assign(this.editedField, { sap_tabe_field_options: this.sap_tabe_field_options })
       this.loading = true;
+      this.disabled = true;
       axios.post('/api/sap/udf/update_field/'+this.editedField.id, this.editedField).then(
         (response) => {
+          this.disabled = false;
           console.log(response.data);
           let data = response.data;
 
           if(data.success)
           { 
-            this.sap_table_fields[this.editedFieldIndex] = this.editedField;
+            this.sap_table_fields[this.editedFieldIndex] = data.sap_table_field;
             this.getSAPUDF();
             this.showAlert(data.success);
             this.resetFieldData();            
@@ -1135,6 +1162,8 @@ export default {
         (error) => {
           this.isUnauthorized(error);
           console.log(error);
+          this.disabled = false;
+          this.loading = false;
         }
       )
     },
@@ -1168,14 +1197,24 @@ export default {
       }
     },
 
-    deleteField(id) {
-      const data = { sap_table_field_id: id };
+    deleteField(item) {
+      const data = { sap_table_field_id: item.id };
       this.loading = true;
       axios.post("/api/sap/udf/delete_field", data).then(
         (response) => {
           this.loading = false;
-          
-          this.showAlert(response.data.success);
+          let data = response.data;
+
+          if(data.success)
+          {
+            this.showAlert(data.success);
+            let index = this.sap_table_fields.indexOf(item);
+            this.sap_table_fields.splice(index, 1);
+          }
+          else
+          {
+            this.showErrorAlert(data.error)
+          }
         },
         (error) => {
           this.isUnauthorized(error);
@@ -1220,37 +1259,132 @@ export default {
     saveOption(){
       
       this.$v.editedOption.$touch();
-
+      
       // if option value has no error and option value table has no error
-      if(!this.$v.editedOption.$error && !this.optionListError.status)
-      {
-        if(this.tableOptionsMode === 'Add')
+      if(!this.optionListError.status)
+      { 
+        if(this.mode === 'Add')
         {
-          let index = this.sap_table_field_options.indexOf({ status: 'New' }); 
-          this.sap_table_field_options.splice(index, 1);
-          this.sap_table_field_options.push(this.editedOption);
+          if(this.tableOptionsMode === 'Add')
+          {
+            let index = this.sap_table_field_options.indexOf({ status: 'New' }); 
+            this.sap_table_field_options.splice(index, 1);
+            this.sap_table_field_options.push(this.editedOption);
+          }
+          else
+          {
+            this.sap_table_field_options[this.editedOptionIndex] = this.editedOption;
+          }
+          
+          this.sap_table_fields[this.editedFieldIndex] = this.sap_table_field_options;
+          this.sap_tables[this.editedIndex] = this.sap_table_fields;
+          this.resetOptionData();
         }
         else
         {
-          this.sap_table_field_options[this.editedOptionIndex] = this.editedOption;
+          let has_options = this.sap_table_fields[this.editedFieldIndex].has_options;
+          let editedHasOptions = this.editedField.has_options;
+
+          // if has_options field is for update from false to true or 0 to 1 value
+          if(has_options !== editedHasOptions)
+          {
+            if(this.tableOptionsMode === 'Add')
+            {
+              let index = this.sap_table_field_options.indexOf({ status: 'New' }); 
+              this.sap_table_field_options.splice(index, 1);
+              this.sap_table_field_options.push(this.editedOption);
+            }
+            else
+            {
+              this.sap_table_field_options[this.editedOptionIndex] = this.editedOption;
+            }
+            this.resetOptionData();
+          }
+          else
+          { 
+            this.tableOptionsMode === 'Add' ? this.storeOption() : this.updateOption();
+          }
         }
-        
-        this.sap_table_fields[this.editedFieldIndex] = this.sap_table_field_options;
-        this.sap_tables[this.editedIndex] = this.sap_table_fields;
-        this.resetOptionData();
-        
       }
       
       // validate options value (sap_table_field_options)
       this.validateOptionList();
+        
     },
 
     storeOption() {
-      const data = Object.assign(this.editedOption, { sap_table_field_id: this.editedField.id });
+     
+      const data = Object.assign(this.editedOption, { 
+        sap_table_field_id: this.editedField.id,
+        field_type: this.editedField.type, 
+      });
+
+      this.disabled = true;
+
+      axios.post('/api/sap/udf/store_option', data).then(
+        (response) => {
+          this.disabled = false;
+          console.log(response);
+          let data = response.data;
+
+          if(data.success)
+          {
+            let index = this.sap_table_field_options.indexOf({ status: 'New' }); 
+            this.sap_table_field_options.splice(index, 1);
+            this.sap_table_field_options.push(data.sap_table_field_option);
+            this.sap_table_fields[this.editedFieldIndex].sap_table_field_options = this.sap_table_field_options;
+            console.log(this.sap_table_fields);
+            this.showAlert(data.success)
+
+            this.resetOptionData();
+          }
+          else//if return object is table_name then get the error
+          { 
+            let object_name = Object.keys(data)[0];
+            this.errorFields[object_name] = data.[object_name][0];
+          }
+        },
+        (error) => {
+          this.isUnauthorized(error);
+          this.disabled = false;
+          this.loading = false;
+        }
+      );
 
     },
 
     updateOption() {
+      this.disabled = true;
+      this.loading = true;
+      const data = Object.assign(this.editedOption, { field_type: this.editedField.type });
+      axios.post('/api/sap/udf/update_option/'+this.editedOption.id, this.editedOption).then(
+        (response) => {
+          this.disabled = false;
+          console.log(response.data);
+          let data = response.data;
+
+          if(data.success)
+          { 
+            this.sap_table_field_options[this.editedOptionIndex] = this.editedOption;
+            this.getSAPUDF();
+            this.showAlert(data.success);
+            this.resetOptionData();            
+          }
+          else//if return object is table_name then get the error
+          { 
+            let object_name = Object.keys(data)[0];
+            this.errorFields[object_name] = data.[object_name][0];
+          }
+
+          this.loading = false;
+        },
+        (error) => {
+          this.isUnauthorized(error);
+          console.log(error);
+          this.disabled = false;
+          this.loading = false;
+        }
+      )
 
     },
 
@@ -1283,13 +1417,25 @@ export default {
 
     },
 
-    deleteOption(id) {
-      const data = { sap_table_field_option_id: id };
+    deleteOption(item) {
+      const data = { sap_table_field_option_id: item.id };
       this.loading = true;
       axios.post("/api/sap/udf/delete_option", data).then(
         (response) => {
           this.loading = false;
-          this.showAlert(response.data.success);
+          let data = response.data;
+
+          if(data.success)
+          {
+            this.showAlert(data.success)
+            let index = this.sap_tables.indexOf(item);
+
+            this.sap_tables.splice(index, 1);
+          }
+          else
+          {
+            this.showErrorAlert(data.error)
+          }
         },
         (error) => {
           this.isUnauthorized(error);
@@ -1412,6 +1558,16 @@ export default {
       });
     },
 
+    showErrorAlert(msg) {
+      this.$swal({
+        position: "center", 
+        icon: "error",
+        title: title,
+        showConfirmButton: true,
+        timer: 10000,
+      });
+    },
+
     showConfirmAlert(table, item) {
       this.$swal({
         title: "Are you sure?",
@@ -1440,8 +1596,6 @@ export default {
             this.deleteOption(item);
           }
         }
-        
-
       });
     },
 
@@ -1665,7 +1819,13 @@ export default {
       let hasError = false;
       // hasError = this.editedField.has_options && !this.sap_table_field_options.length ? true : this.optionValueExists ? true : this.optionsValueInvalid;
       let errorMsg = "";
-      if(this.editedField.has_options && !this.sap_table_field_options.length)
+
+      if(this.$v.editedField.$error)
+      {
+        errorMsg = "Option Value and Description are required!"
+        hasError = true;
+      }
+      else if(this.editedField.has_options && !this.sap_table_field_options.length)
       {
         errorMsg = "Options list is required!"
         hasError = true;
