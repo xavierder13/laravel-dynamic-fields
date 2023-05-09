@@ -670,7 +670,7 @@
                   <v-icon
                     small
                     color="red"
-                    @click="removeFieldRow(item)"
+                    @click="showConfirmAlert('Row', value)"
                   >
                     mdi-delete
                   </v-icon>
@@ -849,7 +849,7 @@ export default {
       this.loading = true;
       axios.get("/api/sap/udf/index").then(
         (response) => {
-          console.log(response.data);
+
           let data = response.data;
           this.sap_tables = data.sap_tables;
           this.parent_tables = data.parent_tables;
@@ -1105,7 +1105,7 @@ export default {
         (response) => {
           this.disabled = false;
           let data = response.data;
-
+          console.log(data);
           if(data.success)
           {
             let index = this.sap_table_fields.indexOf({ status: 'New' }); 
@@ -1199,6 +1199,7 @@ export default {
 
     deleteField(item) {
       const data = { sap_table_field_id: item.id };
+  
       this.loading = true;
       axios.post("/api/sap/udf/delete_field", data).then(
         (response) => {
@@ -1210,6 +1211,7 @@ export default {
             this.showAlert(data.success);
             let index = this.sap_table_fields.indexOf(item);
             this.sap_table_fields.splice(index, 1);
+            this.getSAPUDF();
           }
           else
           {
@@ -1418,19 +1420,21 @@ export default {
     },
 
     deleteOption(item) {
-      const data = { sap_table_field_option_id: item.id };
+      const data = { sap_table_field_option_id: item.id }
+
       this.loading = true;
       axios.post("/api/sap/udf/delete_option", data).then(
         (response) => {
+   
           this.loading = false;
           let data = response.data;
 
           if(data.success)
           {
             this.showAlert(data.success)
-            let index = this.sap_tables.indexOf(item);
+            let index = this.sap_table_field_options.indexOf(item);
 
-            this.sap_tables.splice(index, 1);
+            this.sap_table_field_options.splice(index, 1);
           }
           else
           {
@@ -1489,6 +1493,7 @@ export default {
         else
         {
           this.fieldHasOptions = false;
+          this.sap_tabe_field_options = [];
           this.resetOptionData();
         }
         
@@ -1562,7 +1567,8 @@ export default {
       this.$swal({
         position: "center", 
         icon: "error",
-        title: title,
+        title: "Error Occurred",
+        text: msg,
         showConfirmButton: true,
         timer: 10000,
       });

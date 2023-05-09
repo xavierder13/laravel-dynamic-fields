@@ -81,9 +81,9 @@ class SAPUDFController extends Controller
                     foreach ($field_options as $k => $opts) {
                         if($k !== $j)
                         {
-                            if($option['value'] === $option['value'])
+                            if($option['value'] === $opts['value'])
                             {
-                                return response()->json(['value' => 'Duplicate Option Vaue ' . $opts['field_name'], 'index' => $k], 200);
+                                return response()->json(['value' => 'Duplicate Option Value ' . $opts['value'], 'index' => $k], 200);
                             }
                         }
                     }
@@ -208,39 +208,46 @@ class SAPUDFController extends Controller
         {
             return response()->json($validator->errors(), 200);
         }
-
+        
         $field_options = $request->get('sap_table_field_options');
         $field_type = $request->get('type');
+        $has_options = $request->get('has_options');
 
         //Validate if option value has duplicates
-        foreach ($field_options as $j => $option) {
-            foreach ($field_options as $k => $opts) {
-                if($k !== $j)
-                {
-                    if($option['value'] === $opts['value'])
+        if($has_options)
+        {
+            foreach ($field_options as $j => $option) {
+                foreach ($field_options as $k => $opts) {
+                    if($k !== $j)
                     {
-                        return response()->json(['value' => 'Duplicate Option Vaue ' . $opts['value'], 'index' => $k], 200);
+                        if($option['value'] === $opts['value'])
+                        {
+                            return response()->json(['value' => 'Duplicate Option Vaue ' . $opts['value'], 'index' => $k], 200);
+                        }
                     }
                 }
-            }
-
-            //params (values, sap_table_field type, sap_table_field_option_id)
-            $validator = $this->options_validation($option, $field_type, null);
                 
-            if($validator->fails())
-            {
-                return response()->json($validator->errors(), 200);
+                //params (values, sap_table_field type, sap_table_field_option_id)
+                $validator = $this->options_validation($option, $field_type, null);
+                    
+                if($validator->fails())
+                {
+                    return response()->json($validator->errors(), 200);
+                }
             }
         }
 
         $sap_table_field = new SapTableField();
         $sap_table_field = $this->save_field_data($sap_table_field, $request, $request->get('sap_table_id'));
-
-        foreach ($field_options as $i => $option) {
-            $sap_table_field_option = new SapTableFieldOption();
-            $sap_table_field_option = $this->save_option_data($sap_table_field_option, $option, $sap_table_field->id);
+        
+        if($has_options)
+        {
+            foreach ($field_options as $i => $option) {
+                $sap_table_field_option = new SapTableFieldOption();
+                $sap_table_field_option = $this->save_option_data($sap_table_field_option, $option, $sap_table_field->id);
+            }
         }
-
+        
         $sap_table_field = SapTableField::with('sap_table_field_options')->where('id', '=', $sap_table_field->id)->first();
 
         return response()->json(['success' => 'Record has successfully added', 'sap_table_field' => $sap_table_field], 200);
@@ -270,7 +277,7 @@ class SAPUDFController extends Controller
     //params (values, sap_table_field_id)
     public function fields_validation($item, $id)
     {
-        $sap_table_id = $item['sap_table_id'];
+        $sap_table_id = isset($item['sap_table_id']) ? $item['sap_table_id'] : null;
         $field_name = $item['field_name'];
 
         $valid_fields = [
@@ -355,7 +362,7 @@ class SAPUDFController extends Controller
     public function options_validation($item, $field_type, $id)
     {   
         $sap_table_field_id = isset($item['sap_table_field_id']) ? $item['sap_table_field_id'] : null;
-        $value = $item['value'];
+        $value = isset($item['value']) ? $item['value'] : null;
 
         $valid_fields = [
             'required',
@@ -476,9 +483,8 @@ class SAPUDFController extends Controller
 
         $sap_table_field = SapTableField::find($sap_table_field_id);
         $has_options = $sap_table_field->has_options;
-        $sap_table_field = $this->save_field_data($sap_table_field, $request, $request->get('sap_table_id'));
 
-        // if has_options field is for update then from false to true or 0 to 1 value
+        // if has_options field is for update from false to true or 0 to 1 value
         if(!$has_options && $request->get('has_options'))
         {
             foreach ($field_options as $i => $option) {
@@ -486,6 +492,29 @@ class SAPUDFController extends Controller
                 $sap_table_field_option = $this->save_option_data($sap_table_field_option, $option, $sap_table_field->id);
             }
         }
+        // else if has_options field is for update from true to false or 1 to 0 value
+        else if($has_options && !$request->get('has_options'))
+        {   
+            $sap_table = SapTable::find($sap_table_field->sap_table_id);
+
+            foreach ($field_options as $key => $option) {
+                // check if table name has values or record
+                $has_value = $this->has_value([
+                    'table_name' => $sap_table->table_name, 
+                    'field_name' => $sap_table_field->field_name, 
+                    'option_value' => $option['value'],
+                ], 'Option');
+
+                if($has_value)
+                {
+                    return response()->json(['error', 'Cannot remove option list. Option values has already used.'], 200);
+                }
+            }
+
+            SapTableFieldOption::where('sap_table_field_id', '=', $sap_table_field->id)->delete();
+        }
+
+        $sap_table_field = $this->save_field_data($sap_table_field, $request, $request->get('sap_table_id'));
 
         $sap_table_field = SapTableField::with('sap_table_field_options')->where('id', '=', $sap_table_field->id)->first();
 
@@ -525,7 +554,7 @@ class SAPUDFController extends Controller
         
         if($has_value)
         {
-            return response()->json(['error', 'Cannot delete table. Table '.$sap_table->table_name.' has already used.'], 200);
+            return response()->json(["error" => "Cannot delete table. Table '".$sap_table->table_name."' has already used."], 200);
         }
 
         $sap_table->delete();
@@ -559,7 +588,7 @@ class SAPUDFController extends Controller
         
         if($has_value)
         {
-            return response()->json(['error', 'Cannot delete Field. Field '.$sap_table_field->field_name.' has already used.'], 200);
+            return response()->json(["error" => "Cannot delete Field. Field '".$sap_table_field->field_name."' has already used."], 200);
         }
 
         $sap_table_field->delete();
@@ -579,7 +608,7 @@ class SAPUDFController extends Controller
             return abort(404, 'Not Found');
         }
 
-        $sap_table_field = SapTable::find($sap_table_field_option->sap_table_field_id);
+        $sap_table_field = SapTableField::find($sap_table_field_option->sap_table_field_id);
         $sap_table = SapTable::find($sap_table_field->sap_table_id);
 
         // check if table name has values or record
@@ -591,7 +620,7 @@ class SAPUDFController extends Controller
         
         if($has_value)
         {
-            return response()->json(['error', 'Cannot delete Field. Field '.$sap_table->table_name.' has already used.'], 200);
+            return response()->json(["error" => "Cannot delete Option Value. Value '".$sap_table_field_option->value."' has already used."], 200);
         }
 
         $sap_table_field_option->delete();
@@ -620,7 +649,7 @@ class SAPUDFController extends Controller
         }
         else
         {
-            if(Schema::hasColumn($table_name, $field_name)) // if table exists
+            if(Schema::hasColumn($table_name, $item['field_name'])) // if table exists
             {
                 $field_value = DB::table($table_name)->where($item['field_name'], '=', $item['option_value'])->max($item['field_name']);
             }  

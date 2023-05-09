@@ -115,11 +115,14 @@
               <v-list-item-title>SAP Modules</v-list-item-title>
             </v-list-item-content>
           </template>
-          <v-list-item link to="/sap/ar_invoice">
-            <v-list-item-content>
-              <v-list-item-title>A/R INVOICE</v-list-item-title>
-            </v-list-item-content>
-          </v-list-item>
+          <template v-for="(item, i) in modules">
+            <v-list-item link :to="('/sap/module/') + item.id">
+              <v-list-item-content>
+                <v-list-item-title> {{ item.description }} </v-list-item-title>
+              </v-list-item-content>
+            </v-list-item>
+          </template>
+          
         </v-list-group>
         <v-list-group no-action>
           <!-- List Group Icon-->
@@ -217,10 +220,21 @@ export default {
       selectedItem: 1,
       loading: null,
       initiated: false,
+      modules: [],
     };
   },
 
   methods: {
+    getSAPModules() {
+      axios.get('/api/sap/modules').then(
+        (response) => {
+          this.modules = response.data.modules;
+        },
+        (error) => {
+          console.log(error);
+        }
+      )
+    },
     userProfile() {
       this.$router.push({ name: "user.profile" }).catch((e) => {});
     },
@@ -321,6 +335,7 @@ export default {
       "Bearer " + localStorage.getItem("access_token");
     this.userRolesPermissions();
     this.getUser();
+    this.getSAPModules();
     // this.websocket();
 
   },

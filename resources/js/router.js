@@ -11,7 +11,7 @@ import RoleIndex from './views/role/RoleIndex.vue';
 import RoleCreate from './views/role/RoleCreate.vue';
 import RoleView from './views/role/RoleView.vue';
 import SAPUDF from './views/sap/sap_udf/SAPUDF.vue';
-import ARInvoice from './views/sap/modules/ARInvoice.vue';
+import SAPModule from './views/sap/modules/SAPModule.vue';
 import ActivityLogs from './views/activity_logs/ActivityLogs.vue';
 import PageNotFound from './404/PageNotFound.vue';
 import Unauthorize from './401/Unauthorize.vue';
@@ -50,9 +50,9 @@ const routes = [
         component: SAPUDF
       },
       {
-        path: '/sap/ar_invoice',
-        name: 'sap.ar_invoice',
-        component: ARInvoice
+        path: '/sap/module/:sap_table_id',
+        name: 'sap.module',
+        component: SAPModule
       },
       {
         path: '/permission/index',

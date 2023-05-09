@@ -10,22 +10,28 @@ use App\SapTableFieldOption;
 use DB;
 
 class SAPModuleController extends Controller
-{
-    public function get_ar_invoice_fields()
+{   
+    public function get_parent_tables()
     {
-        $sap_oinv_table = SapTable::with('sap_table_fields')
-                                  ->with('sap_table_fields.sap_table_field_options')
-                                  ->where('table_name', '=', 'oinv')
-                                  ->get()->first();
+        $modules = SapTable::where('type', '=', 'Header')->get();
 
-        $sap_inv1_table = SapTable::with('sap_table_fields')
+        return response()->json(['modules' => $modules], 200);
+    }
+
+    public function get_table_fields($sap_table_id)
+    {
+        $parent_table = SapTable::find($sap_table_id)
+                                ->with('sap_table_fields')
+                                ->with('sap_table_fields.sap_table_field_options')->first();
+
+        $child_tables = SapTable::with('sap_table_fields')
                                   ->with('sap_table_fields.sap_table_field_options')
-                                  ->where('table_name', '=', 'inv1')
-                                  ->get()->first();
+                                  ->where('parent_table', '=', $parent_table->table_name)
+                                  ->get();
         
         return response()->json([
-            'sap_oinv_table' => $sap_oinv_table, 
-            'sap_inv1_table' => $sap_inv1_table
+            'parent_table' => $parent_table, 
+            'child_tables' => $child_tables
         ], 200);
     } 
     
