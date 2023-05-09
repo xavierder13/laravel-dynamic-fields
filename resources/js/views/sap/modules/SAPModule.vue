@@ -51,15 +51,15 @@
                             <thead>
                               <tr>
                                 <th class="pa-2" width="10px">#</th>
-                                <th class="pa-2" v-for="(field, j) in child_table_fields[child.table_name]" :key="j"> 
+                                <th class="pa-2" v-for="(field, j) in child_table_fields[child.table_name].fields" :key="j"> 
                                   {{ field.description }}
                                 </th>
                               </tr>
                             </thead>
                             <tbody>
-                              <tr>
-                                <td></td>
-                                <td>asdad</td>
+                              <tr v-for="(item, j) in child_table_fields[child.table_name].data" :key="j">
+                                <td> {{ j+1 }} </td>
+                                <td v-for="(item, j) in child_table_fields[child.table_name].fields" :key="j" >asdad</td>
                               </tr>
                               <tr>
                                 <td>
@@ -363,15 +363,20 @@ export default {
           console.log('parant_table_fields', this.parent_table_fields);
 
           this.child_tables.forEach((value, index) => {
-            this.child_table_fields[value.table_name] = [];
+
+            this.child_table_fields[value.table_name] = Object.assign({}, { fields: [], data: [] });
+
             value.sap_table_fields.forEach((val, i) => {
-              this.child_table_fields[value.table_name].push({
+
+              this.child_table_fields[value.table_name].fields.push({
                 [val.field_name]: '',
                 field_name: val.field_name,
                 description: val.description, 
                 type: val.type,
               });
+
             });
+
           });
 
           let data = [
@@ -448,6 +453,7 @@ export default {
     newRowItem(item)
     {
       console.log(item);
+      this.child_table_fields[item.table_name].data.push('');
     },
     showAlert(msg) {
       this.$swal({
