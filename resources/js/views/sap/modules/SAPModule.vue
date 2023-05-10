@@ -71,7 +71,7 @@
                                         class="pa-0"
                                         :name="field.field_name + '[]'"
                                         :items="field.options"
-                                        v-model="editedItem[child.table_name][col].value"
+                                        v-model="editedItem[child.table_name].data[col].value"
                                         item-text="description"
                                         item-value="value"
                                         required
@@ -93,17 +93,16 @@
                                       <v-text-field
                                         class="pa-0 ma-0"
                                         :name="field.field_name + '[]'"
-                                        v-model="editedItem[child.table_name][col].value"
+                                        v-model="editedItem[child.table_name].data[col].value"
                                         dense
                                         hide-details
                                         v-if="field.type === 'string'"
                                       ></v-text-field>
-
                                       <!-- if Field Type date -->
                                       <v-menu
                                         ref="menu"
                                         class="pa-0"
-                                        v-model="editedItem[child.table_name][col].date_menu"
+                                        v-model="row_date_menu[child.table_name][col]"
                                         :close-on-content-click="false"
                                         transition="scale-transition"
                                         offset-y
@@ -113,7 +112,7 @@
                                         <template v-slot:activator="{ on, attrs }">
                                           <v-text-field
                                             :name="field.field_name + '[]'"
-                                            v-model="computedDateFormatted[child.table_name][col]"
+                                            v-model="editedItem[child.table_name].data[col].value"
                                             class="pa-0 ma-0"
                                             prepend-icon="mdi-calendar"
                                             v-bind="attrs"
@@ -122,10 +121,10 @@
                                           ></v-text-field>
                                         </template>
                                         <v-date-picker
-                                          v-model="editedItem[child.table_name][col].value"
+                                          v-model="editedItem[child.table_name].data[col].value"
                                           no-title
                                           scrollable
-                                          @input="editedItem[child.table_name][col].date_menu = false"
+                                          @input="dateMenuSetFalse(child.table_name, col)"
                                         >
                                         </v-date-picker>
                                       </v-menu>
@@ -133,7 +132,7 @@
                                       <!-- if Field Type integer -->
                                       <v-text-field-integer
                                         class="pa-0"
-                                        v-model="editedItem[child.table_name][col].value"
+                                        v-model="editedItem[child.table_name].data[col].value"
                                         v-bind:properties="{
                                           name: field.field_name + '[]',
                                           placeholder: '0',
@@ -147,7 +146,7 @@
                                       <!-- if Field Type decimal -->
                                       <v-text-field-money
                                         class="pa-0"
-                                        v-model="editedItem[child.table_name][col].value"
+                                        v-model="editedItem[child.table_name].data[col].value"
                                         v-bind:properties="{
                                           name: field.field_name + '[]',
                                           placeholder: '0',
@@ -293,8 +292,10 @@ export default {
       tab: null,
       mode: "",
       tableRowMode: "",
-      header_date_menu: [],
       rowUnsaved: false,
+      date_menu: false,
+      row_date_menu: [],
+      formattedDateValue: [],
     };
   },
 
@@ -320,8 +321,6 @@ export default {
               type: value.type,
             });
 
-            this.header_date_menu.push(false);
-
           });
 
           this.child_tables.forEach((value, index) => {
@@ -329,7 +328,8 @@ export default {
             let table_name = value.table_name;
 
             this.child_table_fields[table_name] = Object.assign({}, { fields: [], data: [] });
-            this.editedItem[table_name] = [];
+            this.editedItem[table_name] = Object.assign({}, { data: [] });
+            this.row_date_menu[table_name] = [];
 
             value.sap_table_fields.forEach((val, i) => {
 
@@ -341,18 +341,16 @@ export default {
                 options: val.sap_table_field_options,
               });
 
-              this.editedItem[table_name].push({
+              this.editedItem[table_name].data.push({
                 value: '',
                 field_name: val.field_name,
                 description: val.description, 
                 type: val.type,
-                date_menu: false
               });
 
+              this.row_date_menu[table_name].push(false);
+
             });
-
-
-            
 
           });
 
@@ -540,7 +538,6 @@ export default {
       this.child_tables = [];
       this.child_table_fields = [];
       this.tab = null;
-      this.header_date_menu = [];
       this.resetRow();
     },
 
@@ -588,6 +585,13 @@ export default {
       const [year, month, day] = date.split("-");
       return `${month}/${day}/${year}`;
     },
+    formatDateValue() {
+
+    },
+    dateMenuSetFalse(table_name, index) {
+      this.row_date_menu[table_name][index] = false;
+      console.log(this.row_date_menu[table_name][index]);
+    }
   },
   computed: {
     nameErrors() {
@@ -599,21 +603,14 @@ export default {
     computedDateFormatted() {
       
       let formattedDates = [];
-      
-      let items = this.editedItem;
-        items.forEach(element => {
-          console.log(element);
-        });
-      items.forEach((item, index) => {
-        console.log('asdadasd');
-        formattedDates[index] = [];
-        items[index].forEach((item, i) => {
+      this.child_tables.forEach((child, index) => {
+        formattedDates[child.table_name] = [];
+        this.editedItem[child.table_name].data.forEach((item, i) => {
+          console.log(item);
           let formattedDate = this.formatDate(item.value);
-          formattedDates[index].push(formattedDate);
+          formattedDates[child.table_name].push(formattedDate);
         });
       });
-
-      
       
       return formattedDates;
     },
