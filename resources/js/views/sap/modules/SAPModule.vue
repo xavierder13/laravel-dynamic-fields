@@ -28,9 +28,9 @@
                 <v-col cols="4" class="mt-0 mb-0 pt-0 pb-0">
                   <v-text-field
                     name="name"
-                    v-model="parent_table_fields[i][field.field_name]"
+                    v-model="parent_table_fields[i]['value']"
                     :label="field.description"
-                    @input="modelChange(parent_table_fields[i][field.field_name])"
+                    @input="modelChange(parent_table_fields[i]['value'])"
                   ></v-text-field>
                 </v-col>
               </template>
@@ -42,11 +42,12 @@
                     <v-tabs v-model="tab">
                       <v-tab v-for="(child, i) in child_tables" :key="child.table_name">
                         {{ child.description }}
+
                       </v-tab>
                     </v-tabs>
                     <v-tabs-items v-model="tab">
                       <v-tab-item v-for="(child, i) in child_tables" :key="child.table_name">
-                        <v-simple-table class="elevation-1" >
+                        <v-simple-table class="elevation-1" id="child_table">
                           <template v-slot:default>
                             <thead>
                               <tr>
@@ -54,95 +55,66 @@
                                 <th class="pa-2" v-for="(field, j) in child_table_fields[child.table_name].fields" :key="j"> 
                                   {{ field.description }}
                                 </th>
+                                <th class="pa-2" width="80px"> Actions</th>
                               </tr>
                             </thead>
                             <tbody>
-                              <tr v-for="(item, j) in child_table_fields[child.table_name].data" :key="j">
-                                <td> {{ j+1 }} </td>
-                                <td v-for="(item, j) in child_table_fields[child.table_name].fields" :key="j" >asdad</td>
-                              </tr>
-                              <tr>
-                                <td>
-                                  
-                                  <!-- <template v-if="index === editedFieldIndex || item.status === 'New'">
-                                    <td class="pa-2">
-                                      <v-text-field
-                                        name="field_name"
-                                        v-model="editedField.field_name"
-                                        dense
-                                        hide-details
-                                        :error-messages="fieldNameErrors"
-                                        @input="$v.editedField.field_name.$touch() + (errorFields.field_name = '')"
-                                        @blur="$v.editedField.field_name.$touch()"
-                                      ></v-text-field>
-                                      
-                                    </td>
-                                    <td class="pa-2">
-                                      <v-text-field
-                                        name="description"
-                                        v-model="editedField.description"
-                                        dense
-                                        hide-details
-                                        :error-messages="fieldDescriptionErrors"
-                                        @input="$v.editedField.description.$touch()"
-                                        @blur="$v.editedField.description.$touch()"
-                                      ></v-text-field>
-                                    </td>
-                                    <td class="pa-2">
+                              <tr v-for="(item, row) in child_table_fields[child.table_name].data" :key="row">
+                                <td class="pa-2"> {{ row + 1 }} </td>
+                                <td class="pa-2" v-for="(field, col) in child_table_fields[child.table_name].fields" :key="col" >
+            
+                                  <template v-if="row === editedIndex || item.status === 'New'">
+                                    
+                                    <!-- if Field has Options -->
+                                    <template v-if="field.has_options">
                                       <v-autocomplete
-                                        name="type"
-                                        v-model="editedField.type"
-                                        :items="data_types"
-                                        item-text="type"
-                                        item-value="value"
-                                        dense
-                                        hide-details
-                                        :error-messages="fieldTypeErrors" 
-                                        @input="$v.editedField.type.$touch()"
-                                        @blur="$v.editedField.type.$touch()"
-                                      ></v-autocomplete>
-                                    </td>
-                                    <td class="pa-2">
-                                      <v-text-field-integer
                                         class="pa-0"
-                                        v-model="editedField.length"
-                                        v-bind:properties="{
-                                          name: 'length',
-                                          placeholder: '0',
-                                          'hide-details': true,
-                                          dense: true,
-                                          error: $v.editedField.length.$error,
-                                          messages: fieldLengthErrors,
-                                          disabled: editedField.type !== 'string'
-                                        }"
-                                        @input="$v.editedField.length.$touch()"
-                                        @blur="$v.editedField.length.$touch()"
-                                        
-                                      >
-                                      </v-text-field-integer>
-                                    </td>
-                                    <td class="pa-2">
-                                      <v-text-field
-                                        name="default_value"
-                                        v-model="editedField.default_value"
+                                        :name="field.field_name + '[]'"
+                                        :items="field.options"
+                                        v-model="editedItem[child.table_name][col].value"
+                                        item-text="description"
+                                        item-value="value"
+                                        required
                                         dense
                                         hide-details
-                                        v-if="editedField.type === 'string' || editedField.type === ''"
+                                      >
+                                        <template slot="selection" slot-scope="data">
+                                          {{ data.item.value + ' - ' + data.item.description }}
+                                        </template>
+                                        <template slot="item" slot-scope="data">
+                                          {{ data.item.value + ' - ' + data.item.description }}
+                                        </template>
+                                      </v-autocomplete>
+                                    </template>
+
+                                    <!-- if Field no options -->
+                                    <template v-if="!field.has_options">
+                                      <!-- if Field Type string -->
+                                      <v-text-field
+                                        class="pa-0 ma-0"
+                                        :name="field.field_name + '[]'"
+                                        v-model="editedItem[child.table_name][col].value"
+                                        dense
+                                        hide-details
+                                        v-if="field.type === 'string'"
                                       ></v-text-field>
+
+                                      <!-- if Field Type date -->
                                       <v-menu
                                         ref="menu"
                                         class="pa-0"
-                                        v-model="date_menu_default_value"
+                                        v-model="editedItem[child.table_name][col].date_menu"
                                         :close-on-content-click="false"
                                         transition="scale-transition"
                                         offset-y
                                         min-width="auto"
-                                        v-if="editedField.type === 'date'"
+                                        v-if="field.type === 'date'"
                                       >
                                         <template v-slot:activator="{ on, attrs }">
                                           <v-text-field
+                                            :name="field.field_name + '[]'"
+                                            v-model="computedDateFormatted[child.table_name][col]"
                                             class="pa-0 ma-0"
-                                            v-model="computedDefaultValueFormatted"
                                             prepend-icon="mdi-calendar"
                                             v-bind="attrs"
                                             v-on="on"
@@ -150,30 +122,34 @@
                                           ></v-text-field>
                                         </template>
                                         <v-date-picker
-                                          v-model="editedField.default_value"
+                                          v-model="editedItem[child.table_name][col].value"
                                           no-title
                                           scrollable
-                                          @input="date_menu_default_value = false"
+                                          @input="editedItem[child.table_name][col].date_menu = false"
                                         >
                                         </v-date-picker>
                                       </v-menu>
+
+                                      <!-- if Field Type integer -->
                                       <v-text-field-integer
                                         class="pa-0"
-                                        v-model="editedField.default_value"
+                                        v-model="editedItem[child.table_name][col].value"
                                         v-bind:properties="{
-                                          name: 'default_value',
+                                          name: field.field_name + '[]',
                                           placeholder: '0',
                                           'hide-details': true,
                                           dense: true,
                                         }"
-                                        v-if="editedField.type === 'integer'"
+                                        v-if="field.type === 'integer'"
                                       >
                                       </v-text-field-integer>
+
+                                      <!-- if Field Type decimal -->
                                       <v-text-field-money
                                         class="pa-0"
-                                        v-model="editedField.default_value"
+                                        v-model="editedItem[child.table_name][col].value"
                                         v-bind:properties="{
-                                          name: 'length',
+                                          name: field.field_name + '[]',
                                           placeholder: '0',
                                           'hide-details': true,
                                           dense: true,
@@ -183,37 +159,21 @@
                                           precision: 2,
                                           empty: null,
                                         }"
-                                        v-if="editedField.type === 'decimal'"
+                                        v-if="field.type === 'decimal'"
                                       >
                                       </v-text-field-money>
-                                    </td>
-                                    <td>
-                                      <v-checkbox
-                                        name="has_options"
-                                        v-model="editedField.has_options"
-                                        dense
-                                        hide-details
-                                        @click="hasOptionsClick()"
-                                      ></v-checkbox>
-                                    </td>
-                                    <td>
-                                      <v-checkbox
-                                        name="is_required"
-                                        v-model="editedField.is_required"
-                                        dense
-                                        hide-details
-                                      ></v-checkbox>
-                                    </td>
+                                    </template>
+
                                   </template>
-                              
-                                  <template v-if="index !== editedFieldIndex && item.status !== 'New' ">
-                                    <td class="pa-2">
+
+                                  <template v-if="row !== editedIndex && item.status !== 'New' ">
+                                    <td class="pa-2"> mode
                                       <v-icon
                                         small
                                         class="mr-2"
                                         color="green"
                                         @click="editField(item)"
-                                        :disabled="tableFieldsMode === 'Add' ? true : false"
+                                        :disabled="tableRowMode === 'Add' ? true : false"
                                       >
                                         mdi-pencil
                                       </v-icon>
@@ -221,42 +181,40 @@
                                       <v-icon
                                         small
                                         color="red"
-                                        @click="removeFieldRow(item)"
-                                        :disabled="['Add', 'Edit'].includes(tableFieldsMode)"
+                                        @click="removeRowdRow(item)"
+                                        :disabled="['Add', 'Edit'].includes(tableRowMode)"
                                       >
                                         mdi-delete
                                       </v-icon>
                                     </td>
                                   </template>
-                                  
-                                  <template v-if="index === editedFieldIndex ? true : false || item.status === 'New' ">
-                                    <td class="pa-2">
-                                      <v-btn
-                                        x-small
-                                        :disabled="disabled"
-                                        @click="saveField()"
-                                        icon
-                                      >
-                                        <v-icon color="primary">mdi-content-save</v-icon>
-                                      </v-btn>
-                                      <v-btn
-                                        x-small
-                                        color="#E0E0E0"
-                                        @click="cancelFieldEvent(item)"
-                                        icon
-                                      >
-                                        <v-icon color="red">mdi-cancel</v-icon>
-                                      </v-btn>
-                                    </td>
-                                  </template> -->
-                                 
                                 </td>
+                                <template v-if="row === editedIndex ? true : false || item.status === 'New' ">
+                                  <td class="pa-2">
+                                    <v-btn
+                                      x-small
+                                      :disabled="disabled"
+                                      @click="saveRow()"
+                                      icon
+                                    >
+                                      <v-icon color="primary">mdi-content-save</v-icon>
+                                    </v-btn>
+                                    <v-btn
+                                      x-small
+                                      color="#E0E0E0"
+                                      @click="cancelRowEvent(item)"
+                                      icon
+                                    >
+                                      <v-icon color="red">mdi-cancel</v-icon>
+                                    </v-btn>
+                                  </td>
+                                </template>
                               </tr>
                             </tbody>
                             <tfoot>
                               <tr>
-                                <td :colspan="child_table_fields[child.table_name].length + 1" class="text-right">
-                                  <v-btn class="primary" x-small @click="newRowItem(child)">add item</v-btn>
+                                <td :colspan="child_table_fields[child.table_name].fields.length + 2" class="text-right">
+                                  <v-btn class="primary" x-small @click="newRow(child, i)">add item</v-btn>
                                 </td>
                               </tr>
                             </tfoot>
@@ -274,7 +232,7 @@
           <v-card-actions class="pa-0">
             <v-btn
               color="primary"
-              @click="save"
+              @click="saveData()"
               :disabled="disabled"
               class="ml-6 mb-4 mr-1"
             >
@@ -287,6 +245,9 @@
     </div>
   </div>
 </template>
+<style>
+#child_table th, #child_table td { border:1px solid #dddddd; border-bottom:1px solid #dddddd;}
+</style>
 <script>
 
 import axios from "axios";
@@ -304,12 +265,7 @@ export default {
   mixins: [validationMixin],
 
   validations: {
-    editedItem: {
-      name: { required },
-      email: { required, email },
-      password: { required, minLength: minLength(8) },
-      confirm_password: { required, sameAsPassword: sameAs("password") },
-    },
+
   },
   data() {
     return {
@@ -332,15 +288,21 @@ export default {
       child_tables: [],
       child_table_fields: [],
       editedIndex: -1,
-      editedItem: {},
-      defaultItem: {},
+      editedItem: [],
+      defaultItem: [],
       tab: null,
-
+      mode: "",
+      tableRowMode: "",
+      header_date_menu: [],
+      rowUnsaved: false,
     };
   },
 
   methods: {
-    getARInvoiceFields() {
+    getTableFields() {
+
+      this.resetData();
+
       let sap_table_id = this.$route.params.sap_table_id;
       axios.get("/api/sap/module/"+ sap_table_id).then(
         (response) => {
@@ -348,60 +310,52 @@ export default {
           let parent_table_fields = response.data.parent_table.sap_table_fields;
           this.child_tables = response.data.child_tables;
 
-          let fields = [];
+
           parent_table_fields.forEach((value, index) => {
             
             this.parent_table_fields.push({
-              [value.field_name]: '',
+              value: '',
               field_name: value.field_name,
               description: value.description, 
               type: value.type,
             });
 
-          });
+            this.header_date_menu.push(false);
 
-          console.log('parant_table_fields', this.parent_table_fields);
+          });
 
           this.child_tables.forEach((value, index) => {
 
-            this.child_table_fields[value.table_name] = Object.assign({}, { fields: [], data: [] });
+            let table_name = value.table_name;
+
+            this.child_table_fields[table_name] = Object.assign({}, { fields: [], data: [] });
+            this.editedItem[table_name] = [];
 
             value.sap_table_fields.forEach((val, i) => {
 
-              this.child_table_fields[value.table_name].fields.push({
-                [val.field_name]: '',
+              this.child_table_fields[table_name].fields.push({
                 field_name: val.field_name,
                 description: val.description, 
                 type: val.type,
+                has_options: val.has_options,
+                options: val.sap_table_field_options,
+              });
+
+              this.editedItem[table_name].push({
+                value: '',
+                field_name: val.field_name,
+                description: val.description, 
+                type: val.type,
+                date_menu: false
               });
 
             });
 
+
+            
+
           });
 
-          let data = [
-            'INV1', 
-            {
-              columns: [
-                {
-                  'mktg': '',
-                  field_name: 'mktg',
-                  description: 'Marketing Event', 
-                  type: 'string',
-                },
-                {
-                  'mktg2': '',
-                  field_name: 'mktg2',
-                  description: 'Marketing Event2', 
-                  type: 'string',
-                },
-              ],
-              data: [] 
-            }
-
-          ]
-
-          console.log(this.child_table_fields);
         },
         (error) => {
           this.isUnauthorized(error);
@@ -409,52 +363,199 @@ export default {
       );
     },
 
-    
-    save() {
-      this.$v.$touch();
-      this.userError = {
-        name: [],
-        email: [],
-        password: [],
-        confirm_password: [],
-      };
+    saveData() {
 
-      if (!this.$v.$error) {
-        this.disabled = true;
-        this.overlay = true;
+    },
 
-        const data = this.editedItem;
+    async newRow(item, tab_index)
+    {
+      this.tableRowMode = "Add";
+      let table_name = item.table_name;
+      let data = this.child_table_fields[table_name].data;
 
-        axios.post("/api/user/store", data).then(
-          (response) => {
-            if (response.data.success) {
-              // send data to Sockot.IO Server
-              // this.$socket.emit("sendData", { action: "user-create" });
+      let hasNew = false;
 
-              this.showAlert();
-              this.clear();
+      data.forEach((value, index) => {
+        if (value.status === "New") {
+          hasNew = true;
+        }
+      });
 
-            }
-            else {
-              let errors = response.data;
-            }
-            this.overlay = false;
-            this.disabled = false;
-          },
-          (error) => {
-            this.isUnauthorized(error);
+      if (!hasNew) {
+        await data.push({ status: "New" });
+      }
+      
+      // get the index of latest pushed data 
+      this.editedIndex =  await data.length - 1;
+      
+      // auto scroll down when adding an item
+      // await this.updateScroll(null);
 
-            this.overlay = false;
-            this.disabled = false;
+      this.tab = null; // set tab model value into null to update/refresh content
+      this.tab = tab_index; // set set tab model value into current index
+
+    },
+
+    saveRow(item) {
+      let data = this.child_table_fields[item.table_name].data;
+  
+      let index = data.indexOf({ status: 'New' }); 
+      data.splice(index, 1);
+      data.push(this.editedItem);
+    },
+
+    storeRow() { 
+      this.disabled = true;
+      const data = Object.assign(this.editedItem, { 
+        sap_table_id: this.editedItem.id,
+        sap_table_field_options: this.sap_table_field_options, 
+      });
+
+      axios.post('/api/sap/udf/store_field', data).then(
+        (response) => {
+          this.disabled = false;
+          let data = response.data;
+          console.log(data);
+          if(data.success)
+          {
+            let index = this.sap_table_fields.indexOf({ status: 'New' }); 
+            this.sap_table_fields.splice(index, 1);
+
+            // this.editedItem = Object.assign(this.editedItem, { sap_table_field_options: this.sap_table_field_options})
+            this.sap_table_fields.push(data.sap_table_field);
+            this.sap_tables[this.editedIndex] = this.sap_table_fields;
+
+            this.showAlert(data.success);
+            this.resetFieldData();
           }
-        );
+          else//if return object is table_name then get the error
+          { 
+            let object_name = Object.keys(data)[0];
+            this.errorFields[object_name] = data.[object_name][0];
+          }
+
+        },
+        (error) => {
+          this.isUnauthorized(error);
+          this.disabled = false;
+          this.loading = false;
+        }
+      );
+      
+    },
+
+    updateRow() {
+      const data = Object.assign(this.editedItem, { sap_tabe_field_options: this.sap_tabe_field_options })
+      this.loading = true;
+      this.disabled = true;
+      axios.post('/api/sap/udf/update_field/'+this.editedItem.id, this.editedItem).then(
+        (response) => {
+          this.disabled = false;
+          console.log(response.data);
+          let data = response.data;
+
+          if(data.success)
+          { 
+            this.sap_table_fields[this.editedIndex] = data.sap_table_field;
+            this.getSAPUDF();
+            this.showAlert(data.success);
+            this.resetFieldData();            
+          }
+          else//if return object is table_name then get the error
+          { 
+            let object_name = Object.keys(data)[0];
+            this.errorFields[object_name] = data.[object_name][0];
+          }
+
+          this.loading = false;
+        },
+        (error) => {
+          this.isUnauthorized(error);
+          console.log(error);
+          this.disabled = false;
+          this.loading = false;
+        }
+      )
+    },
+
+    cancelRowEvent(item) {
+      this.editedIndex = this.sap_table_fields.indexOf(item);
+      if (this.tableRowMode === "Add") {
+        this.sap_table_fields.splice(this.editedIndex, 1);
+      } 
+
+      this.resetFieldData();
+    },
+
+    editRow(item) {
+      this.tableRowMode = "Edit";
+      this.editedItem = [];
+      this.editedIndex = this.sap_table_fields.indexOf(item);
+      this.sap_table_field_options = item.sap_table_field_options;
+    },
+
+    removeRow(item) {
+      let index = this.sap_table_fields.indexOf(item);
+      if(this.mode === 'Add')
+      {
+        this.sap_table_fields.splice(index, 1);
+      }
+      else
+      { 
+        this.showConfirmAlert('Row', item)
       }
     },
-    newRowItem(item)
-    {
-      console.log(item);
-      this.child_table_fields[item.table_name].data.push('');
+
+    deleteRow(item) {
+      const data = { sap_table_field_id: item.id };
+  
+      this.loading = true;
+      axios.post("/api/sap/udf/delete_field", data).then(
+        (response) => {
+          this.loading = false;
+          let data = response.data;
+
+          if(data.success)
+          {
+            this.showAlert(data.success);
+            let index = this.sap_table_fields.indexOf(item);
+            this.sap_table_fields.splice(index, 1);
+            this.getSAPUDF();
+          }
+          else
+          {
+            this.showErrorAlert(data.error)
+          }
+        },
+        (error) => {
+          this.isUnauthorized(error);
+        }
+      );
     },
+
+    resetData() {
+      this.disabled = false;
+      this.mode = "";
+      this.parent_table_fields = [];
+      this.child_tables = [];
+      this.child_table_fields = [];
+      this.tab = null;
+      this.header_date_menu = [];
+      this.resetRow();
+    },
+
+    resetRow() {
+      this.editedItem = [];
+      this.editedIndex = -1;
+      this.tableRowMode = "";
+      this.rowUnsaved = false;
+    },
+
+    updateScroll(table_id) {
+      var element = document.getElementById("table_id");
+      element.scrollTop = element.scrollHeight;
+    },
+    
     showAlert(msg) {
       this.$swal({
         position: "center",
@@ -478,7 +579,15 @@ export default {
     },
     modelChange(data){
       console.log(this.parent_table_fields);
-    }
+    },
+    formatDate(date) {
+      let timestamp = Date.parse(date);
+
+      if (!date || isNaN(timestamp)) return null;
+    
+      const [year, month, day] = date.split("-");
+      return `${month}/${day}/${year}`;
+    },
   },
   computed: {
     nameErrors() {
@@ -487,11 +596,38 @@ export default {
       !this.$v.editedItem.name.required && errors.push("Name is required.");
       return errors;
     },
+    computedDateFormatted() {
+      
+      let formattedDates = [];
+      
+      let items = this.editedItem;
+        items.forEach(element => {
+          console.log(element);
+        });
+      items.forEach((item, index) => {
+        console.log('asdadasd');
+        formattedDates[index] = [];
+        items[index].forEach((item, i) => {
+          let formattedDate = this.formatDate(item.value);
+          formattedDates[index].push(formattedDate);
+        });
+      });
+
+      
+      
+      return formattedDates;
+    },
     
+  },
+  watch: {
+    $route(to, from) {
+      // react to route changes...
+      this.getTableFields();
+    }
   },
   mounted() {
     axios.defaults.headers.common["Authorization"] = "Bearer " + localStorage.getItem("access_token");
-    this.getARInvoiceFields();
+    this.getTableFields();
    
   },
 };

@@ -20,9 +20,10 @@ class SAPModuleController extends Controller
 
     public function get_table_fields($sap_table_id)
     {
-        $parent_table = SapTable::find($sap_table_id)
-                                ->with('sap_table_fields')
-                                ->with('sap_table_fields.sap_table_field_options')->first();
+        $parent_table = SapTable::with('sap_table_fields')
+                                ->with('sap_table_fields.sap_table_field_options')
+                                ->where('id', '=', $sap_table_id)
+                                ->first();
 
         $child_tables = SapTable::with('sap_table_fields')
                                   ->with('sap_table_fields.sap_table_field_options')

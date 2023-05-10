@@ -1035,8 +1035,6 @@ export default {
         }
       });
 
-      let data = { status: "New" };
-
       if (!hasNew) {
         await this.sap_table_fields.push({ status: "New", sap_table_field_options: [] });
       }

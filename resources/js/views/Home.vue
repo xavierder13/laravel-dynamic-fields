@@ -235,6 +235,12 @@ export default {
         }
       )
     },
+    redirect(id) {
+      this.$router.push({
+        name: "sap.module",
+        params: { sap_table_id: id },
+      });
+    },
     userProfile() {
       this.$router.push({ name: "user.profile" }).catch((e) => {});
     },
@@ -322,14 +328,7 @@ export default {
     ...mapState("auth", ["user"]),
     ...mapGetters("userRolesPermissions", ["hasRole", "hasPermission"]),
   },
-  watch: {
-    // isIdle(){
-    //   if (this.isIdle) {
-    //     this.sessionExpiredSwal();
-    //   }
-    // }
-  },
-
+  
   mounted() {
     axios.defaults.headers.common["Authorization"] =
       "Bearer " + localStorage.getItem("access_token");
@@ -339,5 +338,6 @@ export default {
     // this.websocket();
 
   },
+
 };
 </script>
