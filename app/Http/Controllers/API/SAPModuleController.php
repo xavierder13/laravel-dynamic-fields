@@ -13,7 +13,9 @@ class SAPModuleController extends Controller
 {   
     public function get_parent_tables()
     {
-        $modules = SapTable::where('type', '=', 'Header')->get();
+        $modules = SapTable::where('type', '=', 'Header')
+                           ->where('is_migrated', '=', true)
+                           ->get();
 
         return response()->json(['modules' => $modules], 200);
     }

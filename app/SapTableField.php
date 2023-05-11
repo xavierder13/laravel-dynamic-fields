@@ -21,8 +21,8 @@ class SapTableField extends Model
 
     public function sap_table()
     {   
-        return $this->belongsTo('App\SapTable', 'id','sap_table_id');
-        //                 ( <Model>, <id_of_specified_Model>, <id_of_this_model>  )
+        return $this->belongsTo('App\SapTable', 'sap_table_id','id');
+        //                 ( <Model>, <id_of_this_model>, <id_of_specified_Model>  )
     }
 
     public function sap_table_field_options()

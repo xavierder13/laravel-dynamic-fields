@@ -19,7 +19,7 @@
         </v-breadcrumbs>
         <v-card>
           <v-card-title class="mb-0 pb-0">
-            <span class="headline">Create User</span>
+            <span class="headline">Create {{ parent_table.description }}</span>
           </v-card-title>
           <v-divider></v-divider>
           <v-card-text>
@@ -35,7 +35,7 @@
                 </v-col>
               </template>
             </v-row>
-            <v-row>
+            <v-row v-if="child_tables.length">
               <v-col>
                 <v-card>
                   <v-card-text>
@@ -285,6 +285,7 @@ export default {
       ],
 
       disabled: false,
+      parent_table: "",
       parent_table_fields: [],
       child_tables: [],
       child_table_fields: [],
@@ -310,8 +311,11 @@ export default {
       axios.get("/api/sap/module/"+ sap_table_id).then(
         (response) => {
           console.log(response.data);
-          let parent_table_fields = response.data.parent_table.sap_table_fields;
-          this.child_tables = response.data.child_tables;
+          let data = response.data;
+          let parent_table_fields = data.parent_table.sap_table_fields;
+
+          this.parent_table = data.parent_table;
+          this.child_tables = data.child_tables;
 
 
           parent_table_fields.forEach((value, index) => {
