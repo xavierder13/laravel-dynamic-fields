@@ -658,59 +658,132 @@ class SAPUDFController extends Controller
         return $field_value ? true : false;
     }
 
-    public function migrate(){
-        foreach ($sap_tables as $key => $value) {
+    public function migrate(Request $request)
+    {
+        
+        // foreach ($sap_tables as $key => $value) {
 
-            $table_name = $value->table_name;
-            if (!Schema::hasTable($table_name)){
+        //     $table_name = $value->table_name;
+        //     if (!Schema::hasTable($table_name)){
 
-                Schema::create($table_name, function (Blueprint $table) use ($value) {
-                    $table->id();
-                    foreach ($value->sap_table_fields as $field) {
+        //         Schema::create($table_name, function (Blueprint $table) use ($value) {
+        //             $table->id();
+        //             foreach ($value->sap_table_fields as $field) {
 
-                        $table->{$field->type}($field->field_name, $field->length)->nullable($field->is_required ? false : true);
-                    }
-                    $table->timestamps();
-                });
-            }
-            else
-            {  
+        //                 $table->{$field->type}($field->field_name, $field->length)->nullable($field->is_required ? false : true);
+        //             }
+        //             $table->timestamps();
+        //         });
+        //     }
+        //     else
+        //     {  
+        //         return response()->json(['error' => 'Table name '. strtolower($table_name) . ' already exists.'], 200);
+        //     }
+
+        // }
+
+        // $table_name = 'sap_tables';
+
+        // if (Schema::hasTable($table_name)){
+            
+        //     $field_arr = [
+        //         'field_type' => 'string',
+        //         'field_name' => 'sub_cat_2',
+        //         'field_length' => 200,
+        //         'field_is_required' => true,
+        //     ];
+
+        //     if(!Schema::hasColumn($table_name, $field_arr['field_name']))
+        //     {   
+        //         Schema::table($table_name, function (Blueprint $table) use ($field_arr) {   
+
+        //             if($field_arr['field_type'] === 'integer')
+        //             {
+        //                 $table->{ $field_arr['field_type'] }( $field_arr['field_name'] )->nullable( $field_arr['field_is_required'] ? false : true );
+        //             }
+        //             else
+        //             {
+        //                 $table->{ $field_arr['field_type'] }( $field_arr['field_name'], $field_arr['field_length'] )->nullable( $field_arr['field_is_required'] ? false : true );
+        //             }
+
+        //         });
+        //     }
+        //     else
+        //     {
+        //         return response()->json(['error' => 'Columun ' . $field_arr['field_name'] . ' already exists.'], 200);
+        //     }
+                
+        // }
+        
+        $type = $request->get('type');
+        $table_name = $request->get('table_name');
+        $id = $request->get('id');
+
+        if($type === 'table')
+        {   
+            // START validate table and fields if exists
+            if (Schema::hasTable($table_name))
+            {
                 return response()->json(['error' => 'Table name '. strtolower($table_name) . ' already exists.'], 200);
             }
 
-        }
+            $fields = $request->get('fields');
 
-        $table_name = 'sap_tables';
+            foreach ($fields as $key => $field) {
+                if(Schema::hasColumn($table_name, $field['field_name']))
+                {  
+                    return response()->json(['error' => 'Field name '. strtolower($field['field_name']) . ' already exists.'], 200);
+                }
+            }
 
-        if (Schema::hasTable($table_name)){
-            
-            $field_arr = [
-                'field_type' => 'string',
-                'field_name' => 'sub_cat_2',
-                'field_length' => 200,
-                'field_is_required' => true,
-            ];
+            // END validate table and fields if exists
 
-            if(!Schema::hasColumn($table_name, $field_arr['field_name']))
-            {   
-                Schema::table($table_name, function (Blueprint $table) use ($field_arr) {   
+            // START create table and fields
+            Schema::create($table_name, function (Blueprint $table) use ($fields) {
+                $table->id();
+                $table->integer('docnum');
+                foreach ($fields as $field) {
+                    $type = $field['type'];
+                    $is_required = $field['is_required'];
+                    $length = $field['length'];
 
-                    if($field_arr['field_type'] === 'integer')
+                    if($type === 'string')
                     {
-                        $table->{ $field_arr['field_type'] }( $field_arr['field_name'] )->nullable( $field_arr['field_is_required'] ? false : true );
+                        $table->string($field['field_name'], $length)->nullable($is_required ? false : true); 
+                    }
+                    else if($type === 'decimal')
+                    {
+                        $table->decimal($field['field_name'], 12, 4)->nullable($is_required ? false : true); 
                     }
                     else
                     {
-                        $table->{ $field_arr['field_type'] }( $field_arr['field_name'], $field_arr['field_length'] )->nullable( $field_arr['field_is_required'] ? false : true );
+                        $table->{$type}($field['field_name'])->nullable($is_required ? false : true); 
                     }
+                    
+                }
+                $table->timestamps();
+            });
+            // END create table and fields
 
-                });
-            }
-            else
+            // START validate table and fields if exists
+            if (Schema::hasTable($table_name))
             {
-                return response()->json(['error' => 'Columun ' . $field_arr['field_name'] . ' already exists.'], 200);
+                SapTable::where('id', $id)
+                        ->update(['is_migrated' => true,]);;
+            }
+
+            // if field exists then update the 'is_migrated' column into true
+            foreach ($fields as $field) {
+                if(Schema::hasColumn($table_name, $field['field_name']))
+                {  
+                    SapTableField::where('id', $field['id'])
+                                 ->update(['is_migrated' => true,]);
+                }  
             }
                 
+
         }
+
+        return response()->json(['success' => 'Table fields has been migrated'], 200);
     }
 }

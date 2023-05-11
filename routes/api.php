@@ -147,6 +147,10 @@ Route::group(['prefix' => 'sap', 'middleware' => ['auth:api']], function(){
             'uses' => 'API\SAPUDFController@delete_option',
             'as' => 'sap.udf.delete.option',
         ]);
+        Route::post('/migrate', [
+            'uses' => 'API\SAPUDFController@migrate',
+            'as' => 'sap.udf.migrate',
+        ]);
     });
     
     

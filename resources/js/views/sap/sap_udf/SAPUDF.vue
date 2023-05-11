@@ -558,7 +558,7 @@
                     <v-divider class="mb-3 mt-0"></v-divider>
                     <v-card-actions class="pa-0">
                       <v-spacer></v-spacer>
-                      <v-btn color="#E0E0E0" @click="close" class="mb-3">
+                      <v-btn color="#E0E0E0" @click="close" :class="(mode === 'Edit' && editedItem.id) || mode === 'Add' ? 'mb-3' : 'mb-3 mr-6' ">
                         Cancel
                       </v-btn>
                       <v-btn
@@ -566,6 +566,7 @@
                         @click="saveUDFTable()"
                         class="mb-3 mr-6"
                         :disabled="disabled"
+                        v-if="(mode === 'Edit' && editedItem.id) || mode === 'Add'"
                       >
                         Save
                       </v-btn>
@@ -622,6 +623,15 @@
                 <v-icon
                   small
                   class="mr-2"
+                  color="info"
+                  @click="migrate('table', items[0])"
+                 
+                >
+                  mdi-upload
+                </v-icon>
+                <v-icon
+                  small
+                  class="mr-2"
                   color="green"
                   @click="editUDFTable('Header', items[0])"
                 >
@@ -661,6 +671,15 @@
                   <v-icon
                     small
                     class="mr-2"
+                    color="info"
+                    @click="migrate('field', value)"
+                
+                  >
+                    mdi-upload
+                  </v-icon>
+                  <v-icon
+                    small
+                    class="mr-2"
                     color="green"
                     @click="editUDFTable('Row', value)"
                   >
@@ -678,6 +697,32 @@
               </tr>
             </template>
           </v-data-table>
+          <v-dialog v-model="dialog_migrate" max-width="500px" persistent>
+            <v-card>
+              <v-card-text>
+                <v-container>
+                  <v-row
+                    class="fill-height"
+                    align-content="center"
+                    justify="center"
+                    v-if="migrating"
+                  >
+                    <v-col class="subtitle-1 font-weight-bold text-center mt-4" cols="12">
+                      Migrating Table Fields
+                    </v-col>
+                    <v-col cols="6">
+                      <v-progress-linear
+                        color="primary"
+                        indeterminate
+                        rounded
+                        height="6"
+                      ></v-progress-linear>
+                    </v-col>
+                  </v-row>
+                </v-container>
+              </v-card-text>
+            </v-card>
+          </v-dialog>
         </v-card>
       </v-main>
     </div>
@@ -755,7 +800,7 @@ export default {
         { text: "Required", value: "is_required" },
         { text: "Has Options", value: "has_options" },
         { text: "Migrated", value: "is_migrated" },
-        { text: "Actions", value: "actions", sortable: false, width: "80px" },
+        { text: "Actions", value: "actions", sortable: false, width: "110px" },
       ],
       disabled: false,
       dialog: false,
@@ -841,6 +886,8 @@ export default {
       },
       date_menu_default_value: false,
       date_menu_option_value: false,
+      dialog_migrate: false,
+      migrating: false,
     };
   },
 
@@ -860,6 +907,49 @@ export default {
           this.isUnauthorized(error);
         }
       );
+    },
+
+    migrate(type, item) {
+      // console.log(item);
+      this.dialog_migrate = true;
+      this.migrating = true;
+      let data = {};
+
+      if (type === 'table')
+      {
+        data = {
+          type: type,
+          id: item.id,
+          table_name : item.table_name,
+          fields: item.sap_table_fields
+        };
+      }
+      else
+      {
+        data = {
+          type: type,
+          id: item.id,
+          field_name : item.field_name,
+          options: item.sap_table_field_options
+        };
+      }
+      
+      axios.post('/api/sap/udf/migrate', data).then(
+        (response) => {
+          console.log(response);
+          let data = response.data;
+          if(data.success)
+          {
+            this.showAlert(data.success);
+            this.getSAPUDF();
+            this.dialog_migrate = false;
+            this.migrating = false;
+          }
+        },
+        (error) => {
+          console.log(error);
+        }
+      )
     },
 
     newSAPTable() {
@@ -892,8 +982,6 @@ export default {
           this.updateUDFTable();
         }
       }
-      
-
     },
 
     editUDFTable(type, item){

@@ -22,7 +22,7 @@
             <span class="headline">Create User</span>
           </v-card-title>
           <v-divider></v-divider>
-          <v-card-text class="ml-4">
+          <v-card-text>
             <v-row>
               <template v-for="(field, i) in parent_table_fields">
                 <v-col cols="4" class="mt-0 mb-0 pt-0 pb-0">
@@ -98,11 +98,12 @@
                                         hide-details
                                         v-if="field.type === 'string'"
                                       ></v-text-field>
+
                                       <!-- if Field Type date -->
                                       <v-menu
                                         ref="menu"
                                         class="pa-0"
-                                        v-model="row_date_menu[child.table_name][col]"
+                                        v-model="editedItem[child.table_name].data[col].date_menu"
                                         :close-on-content-click="false"
                                         transition="scale-transition"
                                         offset-y
@@ -112,7 +113,7 @@
                                         <template v-slot:activator="{ on, attrs }">
                                           <v-text-field
                                             :name="field.field_name + '[]'"
-                                            v-model="editedItem[child.table_name].data[col].value"
+                                            v-model="editedItem[child.table_name].data[col].formatted_date"
                                             class="pa-0 ma-0"
                                             prepend-icon="mdi-calendar"
                                             v-bind="attrs"
@@ -124,7 +125,7 @@
                                           v-model="editedItem[child.table_name].data[col].value"
                                           no-title
                                           scrollable
-                                          @input="dateMenuSetFalse(child.table_name, col)"
+                                          @input="formatDateValue(child.table_name, col)"
                                         >
                                         </v-date-picker>
                                       </v-menu>
@@ -259,6 +260,7 @@ import {
   sameAs,
 } from "vuelidate/lib/validators";
 
+
 export default {
 
   mixins: [validationMixin],
@@ -346,6 +348,8 @@ export default {
                 field_name: val.field_name,
                 description: val.description, 
                 type: val.type,
+                date_menu: false,
+                fomatted_data: null,
               });
 
               this.row_date_menu[table_name].push(false);
@@ -585,12 +589,14 @@ export default {
       const [year, month, day] = date.split("-");
       return `${month}/${day}/${year}`;
     },
-    formatDateValue() {
-
-    },
     dateMenuSetFalse(table_name, index) {
       this.row_date_menu[table_name][index] = false;
-      console.log(this.row_date_menu[table_name][index]);
+      // console.log(this.row_date_menu[table_name][index]);
+    },
+    formatDateValue(table_name, i) {
+      let value = this.editedItem[table_name].data[i].value;
+      this.editedItem[table_name].data[i].formatted_date = this.formatDate(value);
+ 
     }
   },
   computed: {
