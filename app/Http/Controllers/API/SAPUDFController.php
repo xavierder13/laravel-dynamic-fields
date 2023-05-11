@@ -542,6 +542,8 @@ class SAPUDFController extends Controller
     {   
         $sap_table_id = $request->get('sap_table_id');
         $sap_table = SapTable::find($sap_table_id);
+
+        $table_name = $sap_table->table_name;
         
         //if record is empty then display error page
         if(empty($sap_table->id))
@@ -559,10 +561,18 @@ class SAPUDFController extends Controller
 
         $sap_table->delete();
 
+        // START validate table and fields if exists
+        if (Schema::hasTable($table_name))
+        {
+            Schema::dropIfExists($table_name);
+        }
+
         $sap_table_field =  SapTableField::where('sap_table_id', '=', $sap_table->id);
         $sap_table_field_id = $sap_table_field->first()->id;
         $sap_table_field->delete();
         $sap_table_field_option = SapTableFieldOption::where('sap_table_field_id', '=', $sap_table_field_id)->delete();
+
+        
 
         return response()->json(['success' => 'Record has been deleted'], 200);
     }
@@ -591,8 +601,19 @@ class SAPUDFController extends Controller
             return response()->json(["error" => "Cannot delete Field. Field '".$sap_table_field->field_name."' has already used."], 200);
         }
 
+        $table_name = $sap_table->table_name;
+        $field_name = $sap_table_field->field_name;
+        
+        // delete column
+        if(Schema::hasColumn($table_name, $field_name))
+        {  
+            Schema::table($table_name, function (Blueprint $table) use ($field_name) {
+                $table->dropColumn($field_name);
+            });
+        }
+
         $sap_table_field->delete();
-        $sap_table_field_option = SapTableFieldOption::where('sap_table_field_id', '=', $sap_table_field->id)->delete();
+        SapTableFieldOption::where('sap_table_field_id', '=', $sap_table_field->id)->delete();
 
         return response()->json(['success' => 'Record has been deleted'], 200);
     }
@@ -692,18 +713,19 @@ class SAPUDFController extends Controller
                     $type = $field['type'];
                     $is_required = $field['is_required'];
                     $length = $field['length'];
+                    $field_name = $field['field_name'];
 
                     if($type === 'string')
                     {
-                        $table->string($field['field_name'], $length)->nullable($is_required ? false : true); 
+                        $table->string($field_name, $length)->nullable($is_required ? false : true); 
                     }
                     else if($type === 'decimal')
                     {
-                        $table->decimal($field['field_name'], 12, 4)->nullable($is_required ? false : true); 
+                        $table->decimal($field_name, 12, 4)->nullable($is_required ? false : true); 
                     }
                     else
                     {
-                        $table->{$type}($field['field_name'])->nullable($is_required ? false : true); 
+                        $table->{$type}($field_name)->nullable($is_required ? false : true); 
                     }
                     
                 }
@@ -726,6 +748,51 @@ class SAPUDFController extends Controller
                                  ->update(['is_migrated' => true,]);
                 }  
             }
+        }
+        else
+        {
+            $sap_table_field = SapTableField::find($id);
+            $sap_table = SapTable::find($sap_table_field->sap_table_id);
+            // if field exists then update the 'is_migrated' column into true
+            if (Schema::hasTable($table_name))
+            {   
+                if(!Schema::hasColumn($sap_table->table_name, $sap_table_field->field_name)) // if table exists
+                {
+                    Schema::table($sap_table->table_name, function (Blueprint $table) use ($sap_table_field) {
+                        $type = $sap_table_field->type;
+                        $is_required = $sap_table_field->is_required;
+                        $length = $sap_table_field->length;
+                        $field_name = $sap_table_field->field_name;
+
+                        if($type === 'string')
+                        {
+                            $table->string($field_name, $length)->nullable($is_required ? false : true); 
+                        }
+                        else if($type === 'decimal')
+                        {
+                            $table->decimal($field_name, 12, 4)->nullable($is_required ? false : true); 
+                        }
+                        else
+                        {
+                            $table->{$type}($field_name)->nullable($is_required ? false : true); 
+                        }
+                    });
+                }
+                else
+                {
+                  
+                    return response()->json(['error' => 'Field name '. strtolower($sap_table_field->field_name) . ' already exists.'], 200);
+                
+                }
+            }
+
+            
+
+            // END validate table and fields if exists
+
+            // START create table and fields
+            
+        
         }
 
         return response()->json(['success' => 'Table fields has been migrated'], 200);
