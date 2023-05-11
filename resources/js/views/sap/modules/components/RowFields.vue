@@ -1,7 +1,7 @@
 <template>
   <div>
-     
-      <!-- <template v-if="has_options">
+      <!-- if Field has Options -->
+      <template v-if="has_options">
         <v-autocomplete
           class="pa-0"
           :name="field_name + '[]'"
@@ -20,11 +20,11 @@
             {{ data.item.value + ' - ' + data.item.description }}
           </template>
         </v-autocomplete>
-      </template> -->
+      </template>
 
-     
+      <!-- if Field no options -->
       <template v-if="!has_options">
-        
+        <!-- if Field Type string -->
         <v-text-field
           class="pa-0 ma-0"
           :name="field_name + '[]'"
@@ -34,7 +34,7 @@
           v-if="type === 'string'"
         ></v-text-field>
 
-       
+        <!-- if Field Type date -->
         <v-menu
           ref="menu"
           class="pa-0"
@@ -65,6 +65,7 @@
           </v-date-picker>
         </v-menu>
 
+        <!-- if Field Type integer -->
         <v-text-field-integer
           class="pa-0"
           v-model="field_value"
@@ -78,6 +79,7 @@
         >
         </v-text-field-integer>
 
+        <!-- if Field Type decimal -->
         <v-text-field-money
           class="pa-0"
           v-model="field_value"
@@ -100,7 +102,7 @@
 </template>
 <script>
 
-export default {
+export default{
   name: "RowFields",
   props: {
     field_name: String,
