@@ -625,7 +625,7 @@
                   class="mr-2"
                   color="info"
                   @click="migrate('table', items[0])"
-                 
+                  :disabled="items[0].is_migrated ? true : false"
                 >
                   mdi-upload
                 </v-icon>
@@ -673,7 +673,7 @@
                     class="mr-2"
                     color="info"
                     @click="migrate('field', value)"
-                
+                    :disabled="value.is_migrated ? true : false"
                   >
                     mdi-upload
                   </v-icon>
@@ -942,6 +942,12 @@ export default {
           {
             this.showAlert(data.success);
             this.getSAPUDF();
+            this.dialog_migrate = false;
+            this.migrating = false;
+          }
+          else
+          {
+            this.showErrorAlert(data.error);
             this.dialog_migrate = false;
             this.migrating = false;
           }

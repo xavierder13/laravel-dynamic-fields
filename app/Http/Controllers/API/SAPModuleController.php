@@ -25,16 +25,36 @@ class SAPModuleController extends Controller
         $parent_table = SapTable::with('sap_table_fields')
                                 ->with('sap_table_fields.sap_table_field_options')
                                 ->where('id', '=', $sap_table_id)
+                                ->where('is_migrated', '=', true)
                                 ->first();
+        
+        $parent_table_fields = SapTableField::with('sap_table')
+                                            ->with('sap_table_field_options')
+                                            ->where('sap_table_id', '=', $sap_table_id)
+                                            ->where('is_migrated', '=', true)
+                                            ->whereHas('sap_table', function($query) {
+                                                $query->where('is_migrated', '=', true);
+                                            })
+                                            ->get();
 
         $child_tables = SapTable::with('sap_table_fields')
                                   ->with('sap_table_fields.sap_table_field_options')
                                   ->where('parent_table', '=', $parent_table->table_name)
+                                  ->where('is_migrated', '=', true)
                                   ->get();
+                                 
+        $child_table_fields = SapTableField::with('sap_table')
+                                            ->with('sap_table_field_options')
+                                            ->where('is_migrated', '=', true)
+                                            ->whereIn('sap_table_id', $child_tables->pluck('id'))
+                                            ->get();
         
         return response()->json([
             'parent_table' => $parent_table, 
-            'child_tables' => $child_tables
+            'parent_table_fields' => $parent_table_fields,
+            'child_tables' => $child_tables,
+            'child_table_fields' => $child_table_fields,
+
         ], 200);
     } 
     

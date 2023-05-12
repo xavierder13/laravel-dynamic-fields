@@ -26,7 +26,7 @@ class SAPUDFController extends Controller
                               ->get();
         
         $parent_tables = SapTable::where('type', '=', 'Header')->get();
-        
+
         return response()->json(['sap_tables' => $sap_tables, 'parent_tables' => $parent_tables], 200);
     }
 
@@ -708,7 +708,6 @@ class SAPUDFController extends Controller
             // START create table and fields
             Schema::create($table_name, function (Blueprint $table) use ($fields) {
                 $table->id();
-                $table->integer('docnum');
                 foreach ($fields as $field) {
                     $type = $field['type'];
                     $is_required = $field['is_required'];
@@ -727,7 +726,6 @@ class SAPUDFController extends Controller
                     {
                         $table->{$type}($field_name)->nullable($is_required ? false : true); 
                     }
-                    
                 }
                 $table->timestamps();
             });
@@ -744,8 +742,7 @@ class SAPUDFController extends Controller
             foreach ($fields as $field) {
                 if(Schema::hasColumn($table_name, $field['field_name']))
                 {  
-                    SapTableField::where('id', $field['id'])
-                                 ->update(['is_migrated' => true,]);
+                    SapTableField::where('id', $field['id'])->update(['is_migrated' => true,]);
                 }  
             }
         }
@@ -753,38 +750,51 @@ class SAPUDFController extends Controller
         {
             $sap_table_field = SapTableField::find($id);
             $sap_table = SapTable::find($sap_table_field->sap_table_id);
+            $table_name = $sap_table->table_name;
             // if field exists then update the 'is_migrated' column into true
             if (Schema::hasTable($table_name))
             {   
-                if(!Schema::hasColumn($sap_table->table_name, $sap_table_field->field_name)) // if table exists
+                if(!Schema::hasColumn($table_name, $sap_table_field->field_name)) // if table exists
                 {
-                    Schema::table($sap_table->table_name, function (Blueprint $table) use ($sap_table_field) {
+                    Schema::table($table_name, function (Blueprint $table) use ($sap_table_field) {
                         $type = $sap_table_field->type;
                         $is_required = $sap_table_field->is_required;
                         $length = $sap_table_field->length;
                         $field_name = $sap_table_field->field_name;
+                        
+                        $is_required = $is_required ? false : true;
 
                         if($type === 'string')
                         {
-                            $table->string($field_name, $length)->nullable($is_required ? false : true); 
+                            $table->string($field_name, $length)->nullable($is_required); 
                         }
                         else if($type === 'decimal')
                         {
-                            $table->decimal($field_name, 12, 4)->nullable($is_required ? false : true); 
+                            $table->decimal($field_name, 12, 4)->nullable($is_required); 
                         }
-                        else
+                        else if($type === 'integer')
                         {
-                            $table->{$type}($field_name)->nullable($is_required ? false : true); 
+                            $table->{$type}($field_name)->nullable($is_required); 
+                        }
+                        else //type date
+                        {
+                            $table->date($field_name)->nullable(); 
                         }
                     });
+
+                    SapTableField::where('id', $id)->update(['is_migrated' => true,]);
                 }
                 else
                 {
-                  
                     return response()->json(['error' => 'Field name '. strtolower($sap_table_field->field_name) . ' already exists.'], 200);
-                
                 }
             }
+            else
+            {
+                return response()->json(['error' => 'No existing table '. $table_name.'. Table must be created first.'], 200);
+            }
+
+
 
             
 
