@@ -47,6 +47,7 @@
                               v-model="editedItem.table_name"
                               label="Table Name"
                               required
+                              :readonly="headerIsMigrated"
                               :error-messages="tableNameErrors"
                               @input="$v.editedItem.table_name.$touch() + (errorFields.table_name = '')"
                               @blur="$v.editedItem.table_name.$touch()"
@@ -150,6 +151,7 @@
                                             v-model="editedField.field_name"
                                             dense
                                             hide-details
+                                            :readonly="rowIsMigrated"
                                             :error-messages="fieldNameErrors"
                                             @input="$v.editedField.field_name.$touch() + (errorFields.field_name = '')"
                                             @blur="$v.editedField.field_name.$touch()"
@@ -395,7 +397,7 @@
                                             hide-details
                                             required
                                             :error-messages="optionValueErrors"
-                                            @input="$v.editedOption.value.$touch()"
+                                            @input="$v.editedOption.value.$touch() + (errorFields.value = '')"
                                             @blur="$v.editedOption.value.$touch()"
                                             v-if="editedField.type === 'string' || editedField.type === ''"
                                           ></v-text-field>
@@ -418,7 +420,7 @@
                                                 v-on="on"
                                                 hide-details=""
                                                 :error-messages="optionValueErrors"
-                                                @input="$v.editedOption.value.$touch()"
+                                                @input="$v.editedOption.value.$touch() + (errorFields.value = '')"
                                                 @blur="$v.editedOption.value.$touch()"
                                               ></v-text-field>
                                             </template>
@@ -441,7 +443,7 @@
                                               error: $v.editedOption.value.$error,
                                               messages: optionValueErrors,
                                             }"
-                                            @input="$v.editedOption.value.$touch()"
+                                            @input="$v.editedOption.value.$touch() + (errorFields.value = '')"
                                             @blur="$v.editedOption.value.$touch()"
                                             v-if="editedField.type === 'integer'"
                                           >
@@ -462,7 +464,7 @@
                                               precision: 2,
                                               empty: null,
                                             }"
-                                            @input="$v.editedOption.value.$touch()"
+                                            @input="$v.editedOption.value.$touch() + (errorFields.value = '')"
                                             @blur="$v.editedOption.value.$touch()"
                                             v-if="editedField.type === 'decimal'"
                                           >
@@ -476,7 +478,7 @@
                                             hide-details
                                             required
                                             :error-messages="optionDescriptionErrors"
-                                            @input="$v.editedOption.description.$touch()"
+                                            @input="$v.editedOption.description.$touch() + (errorFields.value = '')"
                                             @blur="$v.editedOption.description.$touch()"
                                           ></v-text-field>
                                         </td>
@@ -911,8 +913,7 @@ export default {
 
     migrate(type, item) {
       // console.log(item);
-      this.dialog_migrate = true;
-      this.migrating = true;
+      
       let data = {};
 
       if (type === 'table')
@@ -934,28 +935,46 @@ export default {
         };
       }
       
-      axios.post('/api/sap/udf/migrate', data).then(
-        (response) => {
-          console.log(response);
-          let data = response.data;
-          if(data.success)
-          {
-            this.showAlert(data.success);
-            this.getSAPUDF();
-            this.dialog_migrate = false;
-            this.migrating = false;
-          }
-          else
-          {
-            this.showErrorAlert(data.error);
-            this.dialog_migrate = false;
-            this.migrating = false;
-          }
-        },
-        (error) => {
-          console.log(error);
+      
+      this.$swal({
+        title: "Migrate ",
+        text: "You won't be able to revert this!",
+        icon: "info",
+        showCancelButton: true,
+        confirmButtonColor: "Primary",
+        cancelButtonColor: "#6c757d",
+        confirmButtonText: "Proceed",
+      }).then((result) => {
+
+        if (result.value) {
+          this.dialog_migrate = true;
+          this.migrating = true;
+
+          axios.post('/api/sap/udf/migrate', data).then(
+            (response) => {
+              console.log(response);
+              let data = response.data;
+              if(data.success)
+              {
+                this.showAlert(data.success);
+                this.getSAPUDF();
+                this.dialog_migrate = false;
+                this.migrating = false;
+              }
+              else
+              {
+                this.showErrorAlert(data.error);
+                this.dialog_migrate = false;
+                this.migrating = false;
+              }
+            },
+            (error) => {
+              console.log(error);
+          })
         }
-      )
+      });
+      
+      
     },
 
     newSAPTable() {
@@ -1025,8 +1044,12 @@ export default {
           if(data.success)
           {
             // this.sap_tables.push(data.sap_table);
-            // this.getSAPUDF();
+            this.getSAPUDF();
             this.showAlert(data.success);            
+          }
+          else if(data.table_name) //table name returns error
+          {
+            this.errorFields.table_name = data.table_name
           }
           else//if return object is table_name then get the error
           { 
@@ -1113,6 +1136,11 @@ export default {
       this.editedItem = Object.assign({}, this.defaultItem);
       this.sap_table_fields = [];
       this.mode = "";
+      this.errorFields = {
+        table_name: "",
+        field_name: "",
+        value: "",
+      }
       this.resetFieldData();
       this.resetOptionData();
     },
@@ -1243,6 +1271,10 @@ export default {
             this.showAlert(data.success);
             this.resetFieldData();            
           }
+          else if(data.field_name) //field name returns error
+          {
+            this.errorFields.field_name = data.field_name
+          }
           else//if return object is table_name then get the error
           { 
             let object_name = Object.keys(data)[0];
@@ -1324,6 +1356,7 @@ export default {
       this.fieldHasOptions = false;
       this.fieldUnsaved = false;
       this.sap_table_field_options = [];
+      this.errorFields.field_name = "";
     },
 
     async newOptionItem() {
@@ -1353,7 +1386,7 @@ export default {
     saveOption(){
       
       this.$v.editedOption.$touch();
-      
+    
       // if option value has no error and option value table has no error
       if(!this.optionListError.status)
       { 
@@ -1454,7 +1487,7 @@ export default {
       axios.post('/api/sap/udf/update_option/'+this.editedOption.id, this.editedOption).then(
         (response) => {
           this.disabled = false;
-          console.log(response.data);
+          // console.log(response.data);
           let data = response.data;
 
           if(data.success)
@@ -1464,10 +1497,15 @@ export default {
             this.showAlert(data.success);
             this.resetOptionData();            
           }
+          else if(data.value) //option value returns error
+          {
+            this.errorFields.value = data.value
+          }
           else//if return object is table_name then get the error
           { 
             let object_name = Object.keys(data)[0];
             this.errorFields[object_name] = data.[object_name][0];
+            console.log(object_name);
           }
 
           this.loading = false;
@@ -1492,9 +1530,10 @@ export default {
     },
 
     editOption(item) {
-      let value = this.dataIsInvalid(item.value) ? "" : item.value;
       this.tableOptionsMode = "Edit";
-      this.editedOption = Object.assign(item, { value: value });
+      let value = this.dataIsInvalid(item.value) ? "" : item.value;
+      let data = Object.assign(item, { value: value });
+      this.editedOption = Object.assign({}, data);
       this.editedOptionIndex = this.sap_table_field_options.indexOf(item);
     },
 
@@ -1545,6 +1584,7 @@ export default {
       this.editedOptionIndex = -1;
       this.tableOptionsMode = "";
       this.optionUnsaved = false;
+      this.errorFields.value = "";
     },
 
     hasOptionsClick(){
@@ -1908,6 +1948,10 @@ export default {
       {
         errorMsg = "There are unsaved data!"
       }
+      else if(this.errorFields.field_name)
+      {
+        errorMsg = this.errorFields.field_name;
+      }
 
       return { status: hasError, errorMsg: errorMsg };
     },
@@ -1933,6 +1977,11 @@ export default {
         errorMsg = "Option Value exists!"
         hasError = true;
       }
+      else if(this.errorFields.value)
+      {
+        errorMsg = this.errorFields.value;
+        hasError = true;
+      }
       else if(this.optionsValueInvalid)
       {
         errorMsg = "Options value is invalid! Must be type " + this.editedField.type;
@@ -1943,6 +1992,12 @@ export default {
       }
 
       return { status: hasError, errorMsg: errorMsg };
+    },
+    headerIsMigrated() {
+      return this.editedItem.is_migrated ? true : false;
+    },
+    rowIsMigrated() {
+      return this.editedField.is_migrated ? true : false;
     },
     computedDefaultValueFormatted() {
       return this.formatDate(this.editedField.default_value);

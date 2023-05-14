@@ -172,7 +172,7 @@
                                 <td class="pa-2" v-for="(field, col) in child_table_fields[child.table_name].fields" :key="col" >
 
                                   <template v-if="row !== editedIndex && item.status !== 'New'">
-                                    {{ item[col].value }}
+                                    {{ item[col].type === 'date' ? formatDate(item[col].value) : item[col].value }}
                                   </template>
 
                                   <template v-if="row === editedIndex || item.status === 'New'">
@@ -189,7 +189,6 @@
                                         required
                                         dense
                                         hide-details
-                                        :error-messages="editedItem[child.table_name].data[col].errorMsg"
                                         @input="validateField('Row', child.table_name, col)"
                                         @blur="validateField('Row', child.table_name, col)"
                                       >
@@ -211,7 +210,6 @@
                                         v-model="editedItem[child.table_name].data[col].value"
                                         dense
                                         hide-details
-                                        :error-messages="editedItem[child.table_name].data[col].errorMsg"
                                         @input="validateField('Row', child.table_name, col)"
                                         @blur="validateField('Row', child.table_name, col)"
                                         v-if="field.type === 'string'"
@@ -232,12 +230,11 @@
                                           <v-text-field
                                             :name="field.field_name + '[]'"
                                             v-model="editedItem[child.table_name].data[col].formatted_date"
-                                            class="pa-0 ma-0"
+                                            class="pa-0"
                                             prepend-icon="mdi-calendar"
                                             v-bind="attrs"
                                             v-on="on"
-                                            hide-details=""
-                                            :error-messages="editedItem[child.table_name].data[col].errorMsg"
+                                            hide-details
                                             @input="validateField('Row', child.table_name, col)"
                                             @blur="validateField('Row', child.table_name, col)"
                                           ></v-text-field>
@@ -260,8 +257,6 @@
                                           placeholder: '0',
                                           'hide-details': true,
                                           dense: true,
-                                          error: editedItem[child.table_name].data[col].error,
-                                          messages: editedItem[child.table_name].data[col].errorMsg,
                                         }"
                                         @input="validateField('Row', child.table_name, col)"
                                         @blur="validateField('Row', child.table_name, col)"
@@ -278,8 +273,6 @@
                                           placeholder: '0',
                                           'hide-details': true,
                                           dense: true,
-                                          error: editedItem[child.table_name].data[col].error,
-                                          messages: editedItem[child.table_name].data[col].errorMsg,
                                         }"
                                         v-bind:options="{
                                           length: 11,
@@ -489,7 +482,7 @@ export default {
                   description: val.description, 
                   type: val.type,
                   date_menu: false,
-                  fomatted_date: null,
+                  formatted_date: null,
                   error: false,
                   errorMsg: "",
                 });
@@ -580,6 +573,7 @@ export default {
       let arrData = []; 
 
       editedItem.data.forEach((val, i) => {
+        console.log(val);
          arrData.push({
             value: val.value,
             field_name: val.field_name,
@@ -591,8 +585,6 @@ export default {
       });
 
       data.push(arrData);
-
-      // console.log(data);
 
       this.resetRow();
   
@@ -689,8 +681,12 @@ export default {
       row_data.forEach((val, i) => {
         
         this.editedItem[table_name].data[i].value = val.value;
+        this.editedItem[table_name].data[i].formatted_date = this.formatDate(val.value);
 
       });
+
+      console.log(this.editedItem[table_name]);
+
 
     },
 
@@ -756,7 +752,7 @@ export default {
           data[i] = Object.assign(data[i], {
             value: "",
             date_menu: false,
-            fomatted_date: null,
+            formatted_date: null,
             error: false,
             errorMsg: "",
           });

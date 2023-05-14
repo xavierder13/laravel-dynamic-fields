@@ -92,7 +92,7 @@ class SAPUDFController extends Controller
             
             //params (values, sap_table_field_id)
             $validator = $this->fields_validation($value, null);
-
+            
             if($validator->fails())
             { 
                 return response()->json($validator->errors(), 200);
@@ -134,8 +134,8 @@ class SAPUDFController extends Controller
             $field_options = $value['sap_table_field_options'];
             
             foreach ($field_options as $i => $option) {
-                $sap_table_field_option = new SapTableFieldOption();
-                $this->save_option_data($sap_table_field_option, $option, $sap_table_field->id);
+                $field_option = new SapTableFieldOption();
+                $this->save_option_data($field_option, $option, $sap_table_field->id);
             }
         }
         
@@ -243,8 +243,8 @@ class SAPUDFController extends Controller
         if($has_options)
         {
             foreach ($field_options as $i => $option) {
-                $sap_table_field_option = new SapTableFieldOption();
-                $sap_table_field_option = $this->save_option_data($sap_table_field_option, $option, $sap_table_field->id);
+                $field_option = new SapTableFieldOption();
+                $field_option = $this->save_option_data($field_option, $option, $sap_table_field->id);
             }
         }
         
@@ -286,17 +286,11 @@ class SAPUDFController extends Controller
                 'required',
                 'max:64',
                 Rule::unique('sap_table_fields')->where(function ($query) use ($field_name, $sap_table_id, $id) {
-                    if($id) //else if sap_table_field_id has value (update mode)
-                    {
-                        return $query->where('id','!=', $id)
-                                     ->where('field_name', $field_name)
-                                     ->where('sap_table_id', $sap_table_id);
-                    }
-                    else if($sap_table_id) //if sap_table_id has value
-                    {
-                        return $query->where('field_name', $field_name)
-                                     ->where('sap_table_id', $sap_table_id);
-                    }
+                
+                    return $query->where('id','!=', $id)
+                                    ->where('field_name', $field_name)
+                                    ->where('sap_table_id', $sap_table_id);
+
                 }),
             ],
             'description' => 'required|max:30',
@@ -337,25 +331,25 @@ class SAPUDFController extends Controller
         {
             return response()->json($validator->errors(), 200);
         }
-        $sap_table_field_option = new SapTableFieldOption();
-        $sap_table_field_option = $this->save_option_data($sap_table_field_option, $request, $request->get('sap_table_field_id'));
+        $field_option = new SapTableFieldOption();
+        $field_option = $this->save_option_data($field_option, $request, $request->get('sap_table_field_id'));
 
-        return response()->json(['success' => 'Record has successfully added', 'sap_table_field_option' => $sap_table_field_option], 200);
+        return response()->json(['success' => 'Record has successfully added', 'sap_table_field_option' => $field_option], 200);
      
     }
 
-    public function save_option_data($sap_table_field_option, $item, $sap_table_field_id)
+    public function save_option_data($field_option, $item, $sap_table_field_id)
     {   
         $max_line_num = SapTableFieldOption::where('sap_table_field_id', '=', $sap_table_field_id)->max('line_num');
         $line_num = $max_line_num ? $max_line_num + 1 : 0;
 
-        $sap_table_field_option->sap_table_field_id = $sap_table_field_id; 
-        $sap_table_field_option->value = $item['value'];    
-        $sap_table_field_option->description = $item['description'];
-        $sap_table_field_option->line_num = $line_num;
-        $sap_table_field_option->save();
+        $field_option->sap_table_field_id = $sap_table_field_id; 
+        $field_option->value = $item['value'];    
+        $field_option->description = $item['description'];
+        $field_option->line_num = $line_num;
+        $field_option->save();
 
-        return $sap_table_field_option;
+        return $field_option;
     }
 
     //params (values, sap_table_field type, sap_table_field_option_id)
@@ -368,17 +362,10 @@ class SAPUDFController extends Controller
             'required',
             Rule::unique('sap_table_field_options')->where(function ($query) use ($value, $sap_table_field_id, $id) {
 
-                if($id) //else if sap_table_field_option_id has value (update mode)
-                {
                     return $query->where('id','!=', $id)
                                  ->where('value', $value)
                                  ->where('sap_table_field_id', $sap_table_field_id);
-                }
-                elseif($sap_table_field_id) //if sap_table_field_id has value
-                {
-                    return $query->where('value', $value)
-                                 ->where('sap_table_field_id', $sap_table_field_id);
-                }
+                
             }),
         ];
 
@@ -442,6 +429,15 @@ class SAPUDFController extends Controller
         // END validate SAP Table
 
         $sap_table = SapTable::find($sap_table_id);
+
+        // check if table name has values or record
+        $has_value = $this->has_value(['table_name' => $sap_table->table_name], 'Header');
+    
+        if($has_value)
+        {
+            return response()->json(["table_name" => "Cannot update table name. Table '".$sap_table->table_name."' has already used."], 200);
+        }
+         
         $sap_table = $this->save_table($sap_table, $request);
 
         return response()->json(['success' => 'Record has been updated', 'sap_table' => $sap_table], 200);
@@ -482,21 +478,31 @@ class SAPUDFController extends Controller
         }
 
         $sap_table_field = SapTableField::find($sap_table_field_id);
+        $sap_table = SapTable::find($sap_table_field->sap_table_id);
         $has_options = $sap_table_field->has_options;
+
+        // check if table name has values or record
+        $has_value = $this->has_value([
+            'table_name' => $sap_table->table_name, 
+            'field_name' => $sap_table_field->field_name, 
+          ], 'Row' );
+
+        if($has_value)
+        {
+            return response()->json(["field_name" => "Cannot update field name. Field '".$sap_table_field->field_name."' has already used."], 200);
+        }
 
         // if has_options field is for update from false to true or 0 to 1 value
         if(!$has_options && $request->get('has_options'))
         {
             foreach ($field_options as $i => $option) {
-                $sap_table_field_option = new SapTableFieldOption();
-                $sap_table_field_option = $this->save_option_data($sap_table_field_option, $option, $sap_table_field->id);
+                $field_option = new SapTableFieldOption();
+                $field_option = $this->save_option_data($field_option, $option, $sap_table_field->id);
             }
         }
         // else if has_options field is for update from true to false or 1 to 0 value
         else if($has_options && !$request->get('has_options'))
         {   
-            $sap_table = SapTable::find($sap_table_field->sap_table_id);
-
             foreach ($field_options as $key => $option) {
                 // check if table name has values or record
                 $has_value = $this->has_value([
@@ -507,7 +513,7 @@ class SAPUDFController extends Controller
 
                 if($has_value)
                 {
-                    return response()->json(['error', 'Cannot remove option list. Option values has already used.'], 200);
+                    return response()->json(['value', 'Cannot remove option list. Option values has already used.'], 200);
                 }
             }
 
@@ -533,6 +539,22 @@ class SAPUDFController extends Controller
         }
 
         $field_option = SapTableFieldOption::find($sap_table_field_option_id);
+
+        $sap_table_field = SapTableField::find($field_option->sap_table_field_id);
+        $sap_table = SapTable::find($sap_table_field->sap_table_id);
+
+        // check if table name has values or record
+        $has_value = $this->has_value([
+            'table_name' => $sap_table->table_name, 
+            'field_name' => $sap_table_field->field_name, 
+            'option_value' => $field_option->value,
+          ], 'Option');
+
+        if($has_value)
+        {
+            return response()->json(["value" => "Cannot update Option Value. Value '".$field_option->value."' has already used."], 200);
+        }
+
         $field_option = $this->save_option_data($field_option, $request, $request->get('sap_table_field_id'));
 
         return response()->json(['success' => 'Record has been updated', 'sap_table_field_option' => $field_option], 200);
@@ -570,9 +592,7 @@ class SAPUDFController extends Controller
         $sap_table_field =  SapTableField::where('sap_table_id', '=', $sap_table->id);
         $sap_table_field_id = $sap_table_field->first()->id;
         $sap_table_field->delete();
-        $sap_table_field_option = SapTableFieldOption::where('sap_table_field_id', '=', $sap_table_field_id)->delete();
-
-        
+        SapTableFieldOption::where('sap_table_field_id', '=', $sap_table_field_id)->delete();
 
         return response()->json(['success' => 'Record has been deleted'], 200);
     }
@@ -621,30 +641,30 @@ class SAPUDFController extends Controller
     public function delete_option(Request $request)
     {   
         
-        $sap_table_field_option = SapTableFieldOption::find($request->get('sap_table_field_option_id'));
+        $field_option = SapTableFieldOption::find($request->get('sap_table_field_option_id'));
         
         //if record is empty then display error page
-        if(empty($sap_table_field_option->id))
+        if(empty($field_option->id))
         {
             return abort(404, 'Not Found');
         }
 
-        $sap_table_field = SapTableField::find($sap_table_field_option->sap_table_field_id);
+        $sap_table_field = SapTableField::find($field_option->sap_table_field_id);
         $sap_table = SapTable::find($sap_table_field->sap_table_id);
 
         // check if table name has values or record
         $has_value = $this->has_value([
                                         'table_name' => $sap_table->table_name, 
                                         'field_name' => $sap_table_field->field_name, 
-                                        'option_value' => $sap_table_field_option->value,
+                                        'option_value' => $field_option->value,
                                       ], 'Option');
         
         if($has_value)
         {
-            return response()->json(["error" => "Cannot delete Option Value. Value '".$sap_table_field_option->value."' has already used."], 200);
+            return response()->json(["error" => "Cannot delete Option Value. Value '".$field_option->value."' has already used."], 200);
         }
 
-        $sap_table_field_option->delete();
+        $field_option->delete();
 
         return response()->json(['success' => 'Record has been deleted'], 200);
     }
