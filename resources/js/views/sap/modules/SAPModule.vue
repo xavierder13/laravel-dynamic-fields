@@ -38,8 +38,8 @@
                       required
                       dense
                       :error-messages="parent_table_fields[i].errorMsg"
-                      @input="validateField('Header', null, i)"
-                      @blur="validateField('Header', null, i)"
+                      @input="validateField('Header', null, i, null)"
+                      @blur="validateField('Header', null, i, null)"
                     >
                       <template slot="selection" slot-scope="data">
                         {{ data.item.value + ' - ' + data.item.description }}
@@ -60,8 +60,8 @@
                       v-model="parent_table_fields[i].value"
                       dense
                       :error-messages="parent_table_fields[i].errorMsg"
-                      @input="validateField('Header', null, i)"
-                      @blur="validateField('Header', null, i)"
+                      @input="validateField('Header', null, i, null)"
+                      @blur="validateField('Header', null, i, null)"
                       v-if="field.type === 'string'"
                     ></v-text-field>
 
@@ -86,8 +86,8 @@
                           v-bind="attrs"
                           v-on="on"
                           :error-messages="parent_table_fields[i].errorMsg"
-                          @input="validateField('Header', null, i)"
-                          @blur="validateField('Header', null, i)"
+                          @input="validateField('Header', null, i, null)"
+                          @blur="validateField('Header', null, i, null)"
                         ></v-text-field>
                       </template>
                       <v-date-picker
@@ -111,8 +111,8 @@
                         error: parent_table_fields[i].error,
                         messages: parent_table_fields[i].errorMsg,
                       }"
-                      @input="validateField('Header', null, i)"
-                      @blur="validateField('Header', null, i)"
+                      @input="validateField('Header', null, i, null)"
+                      @blur="validateField('Header', null, i, null)"
                       v-if="field.type === 'integer'"
                     >
                     </v-text-field-integer>
@@ -134,8 +134,8 @@
                         precision: 2,
                         empty: null,
                       }"
-                      @input="validateField('Header', null, i)"
-                      @blur="validateField('Header', null, i)"
+                      @input="validateField('Header', null, i, null)"
+                      @blur="validateField('Header', null, i, null)"
                       v-if="field.type === 'decimal'"
                     >
                     </v-text-field-money>
@@ -160,37 +160,37 @@
                             <thead>
                               <tr>
                                 <th class="pa-2" width="10px">#</th>
-                                <th class="pa-2" v-for="(field, j) in child_table_fields[child.table_name].fields" :key="j"> 
+                                <th class="pa-2" v-for="(field, j) in child_table_fields[i].fields" :key="j"> 
                                   {{ field.description }}
                                 </th>
                                 <th class="pa-2" width="80px"> Actions</th>
                               </tr>
                             </thead>
                             <tbody>
-                              <tr v-for="(item, row) in child_table_fields[child.table_name].data" :key="row">
+                              <tr v-for="(item, row) in child_table_fields[i].data" :key="row">
                                 <td class="pa-2"> {{ row + 1 }} </td>
-                                <td class="pa-2" v-for="(field, col) in child_table_fields[child.table_name].fields" :key="col" >
+                                <td class="pa-2" v-for="(field, col) in child_table_fields[i].fields" :key="col" >
 
-                                  <template v-if="row !== editedIndex && item.status !== 'New'">
+                                  <template v-if="row !== editedIndex[i].index && item.status !== 'New'">
                                     {{ item[col].type === 'date' ? formatDate(item[col].value) : item[col].value }}
                                   </template>
 
-                                  <template v-if="row === editedIndex || item.status === 'New'">
-                                    
+                                  <template v-if="row === editedIndex[i].index || item.status === 'New'">
                                     <!-- if Field has Options -->
                                     <template v-if="field.has_options">
                                       <v-autocomplete
                                         class="pa-0"
                                         :name="field.field_name + '[]'"
                                         :items="field.options"
-                                        v-model="editedItem[child.table_name].data[col].value"
+                                        v-model="editedItem[i].data[col].value"
                                         item-text="description"
                                         item-value="value"
                                         required
                                         dense
                                         hide-details
-                                        @input="validateField('Row', child.table_name, col)"
-                                        @blur="validateField('Row', child.table_name, col)"
+                                        :error-messages="editedItem[i].data[col].errorMsg"
+                                        @input="validateField('Row', col, i)"
+                                        @blur="validateField('Row', col, i)"
                                       >
                                         <template slot="selection" slot-scope="data">
                                           {{ data.item.value + ' - ' + data.item.description }}
@@ -207,11 +207,12 @@
                                       <v-text-field
                                         class="pa-0"
                                         :name="field.field_name + '[]'"
-                                        v-model="editedItem[child.table_name].data[col].value"
+                                        v-model="editedItem[i].data[col].value"
                                         dense
                                         hide-details
-                                        @input="validateField('Row', child.table_name, col)"
-                                        @blur="validateField('Row', child.table_name, col)"
+                                        :error-messages="editedItem[i].data[col].errorMsg"
+                                        @input="validateField('Row', col, i)"
+                                        @blur="validateField('Row', col, i)"
                                         v-if="field.type === 'string'"
                                       ></v-text-field>
 
@@ -219,7 +220,7 @@
                                       <v-menu
                                         ref="menu"
                                         class="pa-0"
-                                        v-model="editedItem[child.table_name].data[col].date_menu"
+                                        v-model="editedItem[i].data[col].date_menu"
                                         :close-on-content-click="false"
                                         transition="scale-transition"
                                         offset-y
@@ -229,21 +230,22 @@
                                         <template v-slot:activator="{ on, attrs }">
                                           <v-text-field
                                             :name="field.field_name + '[]'"
-                                            v-model="editedItem[child.table_name].data[col].formatted_date"
+                                            v-model="editedItem[i].data[col].formatted_date"
                                             class="pa-0"
                                             prepend-icon="mdi-calendar"
                                             v-bind="attrs"
                                             v-on="on"
                                             hide-details
-                                            @input="validateField('Row', child.table_name, col)"
-                                            @blur="validateField('Row', child.table_name, col)"
+                                            :error-messages="editedItem[i].data[col].errorMsg"
+                                            @input="validateField('Row', col, i)"
+                                            @blur="validateField('Row', col, i)"
                                           ></v-text-field>
                                         </template>
                                         <v-date-picker
-                                          v-model="editedItem[child.table_name].data[col].value"
+                                          v-model="editedItem[i].data[col].value"
                                           no-title
                                           scrollable
-                                          @input="formatRowDateValue(child.table_name, col)"
+                                          @input="formatRowDateValue(col, i)"
                                         >
                                         </v-date-picker>
                                       </v-menu>
@@ -251,15 +253,17 @@
                                       <!-- if Field Type integer -->
                                       <v-text-field-integer
                                         class="pa-0"
-                                        v-model="editedItem[child.table_name].data[col].value"
+                                        v-model="editedItem[i].data[col].value"
                                         v-bind:properties="{
                                           name: field.field_name + '[]',
                                           placeholder: '0',
                                           'hide-details': true,
                                           dense: true,
+                                          error: editedItem[i].data[col].error,
+                                          messages: editedItem[i].data[col].errorMsg
                                         }"
-                                        @input="validateField('Row', child.table_name, col)"
-                                        @blur="validateField('Row', child.table_name, col)"
+                                        @input="validateField('Row', col, i)"
+                                        @blur="validateField('Row', col, i)"
                                         v-if="field.type === 'integer'"
                                       >
                                       </v-text-field-integer>
@@ -267,33 +271,35 @@
                                       <!-- if Field Type decimal -->
                                       <v-text-field-money
                                         class="pa-0"
-                                        v-model="editedItem[child.table_name].data[col].value"
+                                        v-model="editedItem[i].data[col].value"
                                         v-bind:properties="{
                                           name: field.field_name + '[]',
                                           placeholder: '0',
                                           'hide-details': true,
                                           dense: true,
+                                          error: editedItem[i].data[col].error,
+                                          messages: editedItem[i].data[col].errorMsg
                                         }"
                                         v-bind:options="{
                                           length: 11,
                                           precision: 2,
                                           empty: null,
                                         }"
-                                        @input="validateField('Row', child.table_name, col)"
-                                        @blur="validateField('Row', child.table_name, col)"
+                                        @input="validateField('Row', col, i)"
+                                        @blur="validateField('Row', col, i)"
                                         v-if="field.type === 'decimal'"
                                       >
                                       </v-text-field-money>
                                     </template>
                                   </template>
                                 </td>
-                                <template v-if="row !== editedIndex && item.status !== 'New' ">
+                                <template v-if="row !== editedIndex[i].index && item.status !== 'New' ">
                                   <td class="pa-2">
                                     <v-icon
                                       small
                                       class="mr-2"
                                       color="green"
-                                      @click="editRow(child.table_name, item)"
+                                      @click="editRow(i, item)"
                                       :disabled="tableRowMode === 'Add' ? true : false"
                                     >
                                       mdi-pencil
@@ -302,19 +308,19 @@
                                     <v-icon
                                       small
                                       color="red"
-                                      @click="removeRow(item)"
+                                      @click="removeRow(i, item)"
                                       :disabled="['Add', 'Edit'].includes(tableRowMode)"
                                     >
                                       mdi-delete
                                     </v-icon>
                                   </td>
                                 </template>
-                                <template v-if="row === editedIndex ? true : false || item.status === 'New' ">
+                                <template v-if="row === editedIndex[i].index ? true : false || item.status === 'New' ">
                                   <td class="pa-2">
                                     <v-btn
                                       x-small
                                       :disabled="disabled"
-                                      @click="saveRow(child.table_name)"
+                                      @click="saveRow(i)"
                                       icon
                                     >
                                       <v-icon color="primary">mdi-content-save</v-icon>
@@ -322,7 +328,7 @@
                                     <v-btn
                                       x-small
                                       color="#E0E0E0"
-                                      @click="cancelRowEvent(child.table_name)"
+                                      @click="cancelRowEvent(i)"
                                       icon
                                     >
                                       <v-icon color="red">mdi-cancel</v-icon>
@@ -333,8 +339,8 @@
                             </tbody>
                             <tfoot>
                               <tr>
-                                <td :colspan="child_table_fields[child.table_name].fields.length + 2" class="text-right">
-                                  <v-btn class="primary" x-small @click="newRow(child, i)">add item</v-btn>
+                                <td :colspan="child_table_fields[i].fields.length + 2" class="text-right">
+                                  <v-btn class="primary" x-small @click="newRow(i)">add item</v-btn>
                                 </td>
                               </tr>
                             </tfoot>
@@ -413,7 +419,7 @@ export default {
       editedItem: [],
       defaultItem: [],
       tab: null,
-      mode: "",
+      mode: "Add",
       tableRowMode: "",
       rowUnsaved: false,
       date_menu: false,
@@ -450,6 +456,7 @@ export default {
               description: value.description, 
               type: value.type,
               is_required: value.is_required,
+              date_menu: false,
               formatted_date: null,
               error: false,
               errorMsg: "",
@@ -461,14 +468,16 @@ export default {
 
             let table_name = value.table_name;
 
-            this.child_table_fields[table_name] = Object.assign({}, { fields: [], data: [] });
-            this.editedItem[table_name] = Object.assign({}, { data: [] });
+            this.child_table_fields[index] = Object.assign({}, { fields: [], data: [] });
+            this.editedItem[index] = Object.assign({}, { data: [] });
+
+            this.editedIndex[index] = Object.assign({index: -1});
 
             child_table_fields.forEach((val, i) => {
 
               if(table_name === val.sap_table.table_name)
               {
-                this.child_table_fields[table_name].fields.push({
+                this.child_table_fields[index].fields.push({
                   field_name: val.field_name,
                   description: val.description, 
                   type: val.type,
@@ -476,20 +485,20 @@ export default {
                   options: val.sap_table_field_options,
                 });
 
-                this.editedItem[table_name].data.push({
+                this.editedItem[index].data.push({
                   value: '',
                   field_name: val.field_name,
                   description: val.description, 
                   type: val.type,
+                  is_required: val.is_required,
                   date_menu: false,
                   formatted_date: null,
                   error: false,
                   errorMsg: "",
-                });
+                  
+                });  
               }
-
             });
-
           });
 
           this.overlay = false;
@@ -509,8 +518,8 @@ export default {
       });
 
       this.child_tables.forEach((value, index) => {
-        editedItem[table_name].data.forEach((val, i) => {
-          this.validateField('Row', table_name, i);
+        editedItem[index].data.forEach((val, i) => {
+          this.validateField('Row', i, index);
         });
       });
     
@@ -524,11 +533,10 @@ export default {
       
     },
 
-    async newRow(item, tab_index)
+    async newRow(tab_index)
     {
       this.tableRowMode = "Add";
-      let table_name = item.table_name;
-      let data = this.child_table_fields[table_name].data;
+      let data = this.child_table_fields[tab_index].data;
 
       let hasNew = false;
 
@@ -548,23 +556,17 @@ export default {
       // auto scroll down when adding an item
       // await this.updateScroll(null);
 
-      this.tab = null; // set tab model value into null to update/refresh content
-      this.tab = tab_index; // set set tab model value into current index
+      this.refreshTabData(tab_index);
 
     },
 
-    saveRow(table_name) {
-      this.editedIndex = 1;
-      console.log(this.editedIndex);
-      let data = this.child_table_fields[table_name].data;
-      let editedItem = this.editedItem[table_name];
+    saveRow(tab_index) {
+      let data = this.child_table_fields[tab_index].data;
+      let editedItem = this.editedItem[tab_index];
       
       editedItem.data.forEach((val, i) => {
-        this.validateField('Row', table_name, i);
+        this.validateField('Row', i, tab_index);
       });
-      
-      // console.log(this.editedItem[table_name]);
-      // console.log(this.rowError);
 
       let index = data.indexOf({ status: 'New' }); 
 
@@ -573,24 +575,23 @@ export default {
       let arrData = []; 
 
       editedItem.data.forEach((val, i) => {
-        console.log(val);
-         arrData.push({
-            value: val.value,
-            field_name: val.field_name,
-            description: val.description, 
-            type: val.type,
-            has_options: val.has_options,
-            options: val.sap_table_field_options,
-          });
+        arrData.push({
+          value: val.value,
+          field_name: val.field_name,
+          description: val.description, 
+          type: val.type,
+          has_options: val.has_options,
+          options: val.sap_table_field_options,
+        });
       });
 
       data.push(arrData);
-
-      this.resetRow();
+      this.refreshTabData(tab_index);
+      this.resetRow(tab_index);
   
     },
 
-    storeRow() { 
+    storeRow(tab_index) { 
       this.disabled = true;
       const data = Object.assign(this.editedItem, { 
         sap_table_id: this.editedItem.id,
@@ -604,15 +605,8 @@ export default {
           console.log(data);
           if(data.success)
           {
-            let index = this.sap_table_fields.indexOf({ status: 'New' }); 
-            this.sap_table_fields.splice(index, 1);
-
-            // this.editedItem = Object.assign(this.editedItem, { sap_table_field_options: this.sap_table_field_options})
-            this.sap_table_fields.push(data.sap_table_field);
-            this.sap_tables[this.editedIndex] = this.sap_table_fields;
-
             this.showAlert(data.success);
-            this.resetFieldData();
+            this.resetRow(tab_index);
           }
           else//if return object is table_name then get the error
           { 
@@ -630,7 +624,7 @@ export default {
       
     },
 
-    updateRow() {
+    updateRow(tab_index) {
       const data = Object.assign(this.editedItem, { sap_tabe_field_options: this.sap_tabe_field_options })
       this.loading = true;
       this.disabled = true;
@@ -642,10 +636,8 @@ export default {
 
           if(data.success)
           { 
-            this.sap_table_fields[this.editedIndex] = data.sap_table_field;
-            this.getSAPUDF();
             this.showAlert(data.success);
-            this.resetFieldData();            
+            this.resetRow(tab_index);            
           }
           else//if return object is table_name then get the error
           { 
@@ -664,45 +656,50 @@ export default {
       )
     },
 
-    cancelRowEvent(table_name) {
-      this.editedIndex = this.child_table_fields[table_name].data.indexOf({ status: "New" });
+    cancelRowEvent(tab_index) {
+
+      let index = this.child_table_fields[tab_index].data.indexOf({ status: "New" });
+
       if (this.tableRowMode === "Add") {
-        this.child_table_fields[table_name].data.splice(this.editedIndex, 1);
+        this.child_table_fields[tab_index].data.splice(index, 1);
       }
-      this.resetRow();
+      this.resetRow(tab_index);
     },
 
-    editRow(table_name, item) {
-      console.log(item);
-      let data = this.child_table_fields[table_name].data;
-      this.editedIndex = data.indexOf(item);
-      let row_data = data[this.editedIndex];
+    editRow(tab_index, item) {
+ 
+      let data = this.child_table_fields[tab_index].data;
+      this.editedIndex[tab_index].index = data.indexOf(item);
+      let row_data = data[this.editedIndex[tab_index].index];
       
       row_data.forEach((val, i) => {
         
-        this.editedItem[table_name].data[i].value = val.value;
-        this.editedItem[table_name].data[i].formatted_date = this.formatDate(val.value);
+        this.editedItem[tab_index].data[i].value = val.value;
+        this.editedItem[tab_index].data[i].formatted_date = this.formatDate(val.value);
 
       });
 
-      console.log(this.editedItem[table_name]);
-
+      this.refreshTabData(tab_index);
 
     },
 
-    removeRow(item) {
-      let index = this.sap_table_fields.indexOf(item);
+    removeRow(tab_index, item) {
+      let data = this.child_table_fields[tab_index].data;
+      let index = data.indexOf(item);
+
       if(this.mode === 'Add')
       {
-        this.sap_table_fields.splice(index, 1);
+        data.splice(index, 1);
       }
       else
       { 
-        this.showConfirmAlert('Row', item)
+        this.showConfirmAlert('Row', tab_index, item)
       }
+
+      this.refreshTabData(tab_index);
     },
 
-    deleteRow(item) {
+    deleteRow(tab_index, item) {
       const data = { sap_table_field_id: item.id };
   
       this.loading = true;
@@ -731,46 +728,45 @@ export default {
 
     resetData() {
       this.disabled = false;
-      this.mode = "";
+      this.mode = "Add";
       this.parent_table_fields = [];
       this.child_tables = [];
       this.child_table_fields = [];
       this.tab = null;
-      this.resetRow();
+      this.child_tables.forEach((val, i) => {
+        this.resetRow(i);
+      }); 
+      
     },
 
-    resetRow() {
+    resetRow(tab_index) {
       // this.editedItem = [];
-      this.editedIndex = -1;
       this.tableRowMode = "";
       this.rowUnsaved = false;
 
+      this.editedIndex[tab_index].index = -1
       // reset editedItem values
-      this.child_tables.forEach((value, index) => {
-        let data = this.editedItem[value.table_name].data;
-        data.forEach((val, i) => {
-          data[i] = Object.assign(data[i], {
-            value: "",
-            date_menu: false,
-            formatted_date: null,
-            error: false,
-            errorMsg: "",
-          });
-
-
-          
+      let data = this.editedItem[tab_index].data;
+      data.forEach((val, i) => {
+        data[i] = Object.assign(data[i], {
+          value: "",
+          date_menu: false,
+          formatted_date: null,
+          error: false,
+          errorMsg: "",
         });
-          
-      })
+      });
+
+      this.refreshTabData(tab_index);
     },
 
-    validateField(table_type, child_table, row) {
+    validateField(table_type, row, tab_index) {
 
       let type = "";
       let spChars1 = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/; //all special characters
       let spChars2 = /[!@#$%^&*()_+\-=\[\]{};':"\\|,<>\/?]+/; //all special characters whithout period/dot (.)
       let invalid = false;
-      let field = table_type == 'Header' ? this.parent_table_fields[row] : this.editedItem[child_table].data[row] ;
+      let field = table_type == 'Header' ? this.parent_table_fields[row] : this.editedItem[tab_index].data[row] ;
       let value = field.value;
 
       field.error = false;
@@ -811,7 +807,14 @@ export default {
           field.errorMsg = field.description + ' must be type ' + field.type;
         }
       }
-        
+
+      this.refreshTabData(tab_index);
+      
+    },
+
+    refreshTabData(tab_index) {
+      this.tab = null;
+      this.tab = tab_index;
     },
 
     validateRow() {
@@ -848,24 +851,20 @@ export default {
       const [year, month, day] = date.split("-");
       return `${month}/${day}/${year}`;
     },
-    dateMenuSetFalse(table_name, index) {
-      this.row_date_menu[table_name][index] = false;
-      // console.log(this.row_date_menu[table_name][index]);
-    },
-    formatHeaderDateValue(i) {
+ 
+    formatHeaderDateValue(i, tab_index) {
       let value = this.parent_table_fields[i].value;
       this.parent_table_fields[i].formatted_date = this.formatDate(value);
 
     },
-    formatRowDateValue(table_name, i) {
-      let value = this.editedItem[table_name].data[i].value;
-      this.editedItem[table_name].data[i].formatted_date = this.formatDate(value);
- 
+    formatRowDateValue(i, tab_index) {
+      let value = this.editedItem[tab_index].data[i].value;
+      this.editedItem[tab_index].data[i].formatted_date = this.formatDate(value);
     },
 
-    rowFieldColor(table_name, index){
+    rowFieldColor(tab_index, index){
       // if edit mode then set the color of edited row into 'red lighten-5' or 'blue lighten-5' else ''
-      return index === this.editedIndex[table_name] ? this.rowError ? 'red lighten-5' : 'blue lighten-5' : ''
+      return index === this.editedIndex[tab_index].index ? this.rowError ? 'red lighten-5' : 'blue lighten-5' : ''
     },
     
   },
@@ -875,20 +874,6 @@ export default {
       if (!this.$v.editedItem.name.$dirty) return errors;
       !this.$v.editedItem.name.required && errors.push("Name is required.");
       return errors;
-    },
-    computedDateFormatted() {
-      
-      let formattedDates = [];
-      this.child_tables.forEach((child, index) => {
-        formattedDates[child.table_name] = [];
-        this.editedItem[child.table_name].data.forEach((item, i) => {
-          console.log(item);
-          let formattedDate = this.formatDate(item.value);
-          formattedDates[child.table_name].push(formattedDate);
-        });
-      });
-      
-      return formattedDates;
     },
     headerError() {
       let hasError = false;
@@ -906,7 +891,7 @@ export default {
       
       this.child_tables.forEach((value, index) => {
 
-        let data = this.editedItem[value.table_name].data;
+        let data = this.editedItem[index].data;
         data.forEach((val, i) => {
           if(val.error)
           {
