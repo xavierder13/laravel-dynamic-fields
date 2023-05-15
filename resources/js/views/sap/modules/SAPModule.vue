@@ -448,6 +448,7 @@ export default {
           let parent_table_fields = data.parent_table_fields;
           let child_table_fields = data.child_table_fields;
 
+          // assign header fields
           parent_table_fields.forEach((value, index) => {
             
             this.parent_table_fields.push({
@@ -464,6 +465,7 @@ export default {
 
           });
 
+          // assign row fields per tab/child table
           this.child_tables.forEach((value, index) => {
 
             let table_name = value.table_name;
@@ -495,7 +497,6 @@ export default {
                   formatted_date: null,
                   error: false,
                   errorMsg: "",
-                  
                 });  
               }
             });
