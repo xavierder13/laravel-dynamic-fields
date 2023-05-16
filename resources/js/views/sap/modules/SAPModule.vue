@@ -19,10 +19,23 @@
         </v-breadcrumbs>
         <v-card>
           <v-card-title class="mb-0 pb-0">
-            <span class="headline">Create {{ parent_table.description }}</span>
+            <span class="headline">{{ mode === 'Add' ? 'Create' : 'Update' }} {{ parent_table.description }}</span>
+            <v-divider vertical class="mx-2"></v-divider>
+            <v-tooltip top>
+              <template v-slot:activator="{ on, attrs }">
+                <v-icon v-bind="attrs" v-on="on" large class="mr-2" color='blue darken-2' :disabled="mode === 'Add'" @click="">mdi-file-plus</v-icon>
+              </template>
+              <span>Add Mode</span>
+            </v-tooltip>
+            <v-tooltip top>
+              <template v-slot:activator="{ on, attrs }">
+                <v-icon v-bind="attrs" v-on="on" large color='blue darken-2' :disabled="mode === 'Find'" @click="mode = 'Find'">mdi-file-find</v-icon>
+              </template>
+              <span>Find Mode</span>
+            </v-tooltip>
           </v-card-title>
           <v-divider></v-divider>
-          <v-card-text>
+          <v-card-text class="pa-6">
             <v-row>
               <template v-for="(field, i) in parent_table_fields">
                 <v-col cols="3" class="mt-0 mb-0 pt-0 pb-0">
@@ -38,8 +51,8 @@
                       required
                       dense
                       :error-messages="parent_table_fields[i].errorMsg"
-                      @input="validateField('Header', null, i, null)"
-                      @blur="validateField('Header', null, i, null)"
+                      @input="validateField('Header', i, parent_table_fields[i].value)"
+                      @blur="validateField('Header', i, null)"
                     >
                       <template slot="selection" slot-scope="data">
                         {{ data.item.value + ' - ' + data.item.description }}
@@ -60,16 +73,16 @@
                       v-model="parent_table_fields[i].value"
                       dense
                       :error-messages="parent_table_fields[i].errorMsg"
-                      @input="validateField('Header', null, i, null)"
-                      @blur="validateField('Header', null, i, null)"
-                      v-if="field.type === 'string'"
+                      @input="validateField('Header', i, null)"
+                      @blur="validateField('Header', i, null)"
+                      v-if="['string', 'date'].includes(field.type)"
                     ></v-text-field>
 
                     <!-- if Field Type date -->
-                    <v-menu
+                    <!-- <v-menu
                       ref="menu"
                       class="pa-0"
-                      v-model="parent_table_fields[i]['date_menu']"
+                      v-model="parent_table_fields[i].date_menu"
                       :close-on-content-click="false"
                       transition="scale-transition"
                       offset-y
@@ -86,18 +99,18 @@
                           v-bind="attrs"
                           v-on="on"
                           :error-messages="parent_table_fields[i].errorMsg"
-                          @input="validateField('Header', null, i, null)"
-                          @blur="validateField('Header', null, i, null)"
+                          @input="validateField('Header', i, null)"
+                          @blur="validateField('Header', i, null)"
                         ></v-text-field>
                       </template>
                       <v-date-picker
                         v-model="parent_table_fields[i].value"
                         no-title
                         scrollable
-                        @input="formatHeaderDateValue(i)"
+                        @input="formatHeaderDateValue(i) + (parent_table_fields[i].date_menu = false)"
                       >
                       </v-date-picker>
-                    </v-menu>
+                    </v-menu> -->
 
                     <!-- if Field Type integer -->
                     <v-text-field-integer
@@ -111,8 +124,8 @@
                         error: parent_table_fields[i].error,
                         messages: parent_table_fields[i].errorMsg,
                       }"
-                      @input="validateField('Header', null, i, null)"
-                      @blur="validateField('Header', null, i, null)"
+                      @input="validateField('Header', i, null)"
+                      @blur="validateField('Header', i, null)"
                       v-if="field.type === 'integer'"
                     >
                     </v-text-field-integer>
@@ -134,8 +147,8 @@
                         precision: 2,
                         empty: null,
                       }"
-                      @input="validateField('Header', null, i, null)"
-                      @blur="validateField('Header', null, i, null)"
+                      @input="validateField('Header', i, null)"
+                      @blur="validateField('Header', i, null)"
                       v-if="field.type === 'decimal'"
                     >
                     </v-text-field-money>
@@ -155,7 +168,11 @@
                     </v-tabs>
                     <v-tabs-items v-model="tab">
                       <v-tab-item v-for="(child, i) in child_tables" :key="child.table_name">
-                        <v-simple-table class="elevation-1" id="child_table">
+                        <v-simple-table 
+                          class="elevation-1 child_table" 
+                          :id="'child_table' + i" 
+                          style="max-height: 250px; overflow-y: scroll; overflow-y: auto !important"
+                        >
                           <template v-slot:default>
                             <thead>
                               <tr>
@@ -167,12 +184,12 @@
                               </tr>
                             </thead>
                             <tbody>
-                              <tr v-for="(item, row) in child_table_fields[i].data" :key="row">
+                              <tr v-for="(item, row) in child_table_fields[i].data" :key="row" :class="rowFieldColor(i, row)">
                                 <td class="pa-2"> {{ row + 1 }} </td>
                                 <td class="pa-2" v-for="(field, col) in child_table_fields[i].fields" :key="col" >
 
                                   <template v-if="row !== editedIndex[i].index && item.status !== 'New'">
-                                    {{ item[col].type === 'date' ? formatDate(item[col].value) : item[col].value }}
+                                    {{ item[col].value }}
                                   </template>
 
                                   <template v-if="row === editedIndex[i].index || item.status === 'New'">
@@ -210,14 +227,15 @@
                                         v-model="editedItem[i].data[col].value"
                                         dense
                                         hide-details
+                                        :placeholder="field.type === 'date' ? 'MM/DD/YYYY' : ''"
                                         :error-messages="editedItem[i].data[col].errorMsg"
                                         @input="validateField('Row', col, i)"
                                         @blur="validateField('Row', col, i)"
-                                        v-if="field.type === 'string'"
+                                        v-if="['string', 'date'].includes(field.type)"
                                       ></v-text-field>
 
                                       <!-- if Field Type date -->
-                                      <v-menu
+                                      <!-- <v-menu
                                         ref="menu"
                                         class="pa-0"
                                         v-model="editedItem[i].data[col].date_menu"
@@ -226,6 +244,7 @@
                                         offset-y
                                         min-width="auto"
                                         v-if="field.type === 'date'"
+                                        @click="validateField('Row', col, i)"
                                       >
                                         <template v-slot:activator="{ on, attrs }">
                                           <v-text-field
@@ -245,10 +264,10 @@
                                           v-model="editedItem[i].data[col].value"
                                           no-title
                                           scrollable
-                                          @input="formatRowDateValue(col, i)"
+                                          @input="formatRowDateValue(col, i) + (editedItem[i].data[col].date_menu = false)"
                                         >
                                         </v-date-picker>
-                                      </v-menu>
+                                      </v-menu> -->
 
                                       <!-- if Field Type integer -->
                                       <v-text-field-integer
@@ -300,7 +319,7 @@
                                       class="mr-2"
                                       color="green"
                                       @click="editRow(i, item)"
-                                      :disabled="tableRowMode === 'Add' ? true : false"
+                                      :disabled="tableRowMode[i].mode === 'Add' ? true : false"
                                     >
                                       mdi-pencil
                                     </v-icon>
@@ -309,7 +328,7 @@
                                       small
                                       color="red"
                                       @click="removeRow(i, item)"
-                                      :disabled="['Add', 'Edit'].includes(tableRowMode)"
+                                      :disabled="['Add', 'Edit'].includes(tableRowMode[i].mode)"
                                     >
                                       mdi-delete
                                     </v-icon>
@@ -346,6 +365,15 @@
                             </tfoot>
                           </template>
                         </v-simple-table>
+                        <v-alert
+                          dense
+                          outlined
+                          type="error"
+                          class="pa-1 mt-2 mb-0"
+                          v-if="tableHasError[i].error || rowUnsaved[i].status"
+                        >
+                          {{ tableHasError[i].errorMsg + ' ' + rowUnsaved[i].errorMsg }}
+                        </v-alert>
                       </v-tab-item>
                     </v-tabs-items>
                   </v-card-text>
@@ -362,7 +390,7 @@
               :disabled="disabled"
               class="ml-6 mb-4 mr-1"
             >
-              Save
+              {{ mode }}
             </v-btn>
             <v-btn color="#E0E0E0" to="/" class="mb-4"> Cancel </v-btn>
           </v-card-actions>
@@ -372,7 +400,7 @@
   </div>
 </template>
 <style>
-#child_table th, #child_table td { border:1px solid #dddddd; border-bottom:1px solid #dddddd;}
+.child_table th, .child_table td { border:1px solid #dddddd; border-bottom:1px solid #dddddd;}
 </style>
 <script>
 
@@ -385,6 +413,7 @@ import {
   minLength,
   sameAs,
 } from "vuelidate/lib/validators";
+import moment from "moment";
 
 
 export default {
@@ -420,11 +449,12 @@ export default {
       defaultItem: [],
       tab: null,
       mode: "Add",
-      tableRowMode: "",
-      rowUnsaved: false,
+      tableRowMode: [],
+      rowUnsaved: [],
       date_menu: false,
       row_date_menu: [],
       formattedDateValue: [],
+      tableHasError: [],
     };
   },
 
@@ -472,8 +502,10 @@ export default {
 
             this.child_table_fields[index] = Object.assign({}, { fields: [], data: [] });
             this.editedItem[index] = Object.assign({}, { data: [] });
-
             this.editedIndex[index] = Object.assign({index: -1});
+            this.tableHasError[index] = Object.assign({error: false, errorMsg: "" });
+            this.tableRowMode[index] =  Object.assign({mode: ""});
+            this.rowUnsaved[index] =  Object.assign({status: false, errorMsg: ""});
 
             child_table_fields.forEach((val, i) => {
 
@@ -512,19 +544,19 @@ export default {
     },
 
     saveData() {
+      
       this.disabled = true;
 
       this.parent_table_fields.forEach((value, i) => {
-        this.validateField('Header', null, i);
+        this.validateField('Header', i, null);
       });
 
       this.child_tables.forEach((value, index) => {
-        editedItem[index].data.forEach((val, i) => {
-          this.validateField('Row', i, index);
-        });
+        this.rowUnsaved[index].status = this.tableRowMode[index].mode ? true : false;
+        this.rowUnsaved[index].errorMsg = this.rowUnsaved[index].status ? 'There are unsaved data' : '';
       });
     
-      if(!this.headerError)
+      if(!this.headerError && !this.rowError() )
       {
         this.getTableFields();
         this.overlay = true;
@@ -536,7 +568,7 @@ export default {
 
     async newRow(tab_index)
     {
-      this.tableRowMode = "Add";
+      this.tableRowMode[tab_index].mode = "Add";
       let data = this.child_table_fields[tab_index].data;
 
       let hasNew = false;
@@ -552,12 +584,12 @@ export default {
       }
       
       // get the index of latest pushed data 
-      // this.editedIndex[table_name] =  await data.length - 1;
+      this.editedIndex[tab_index].index =  await data.length - 1;
       
       // auto scroll down when adding an item
-      // await this.updateScroll(null);
-
-      this.refreshTabData(tab_index);
+      
+      await this.refreshTabData(tab_index);
+      await this.updateScroll(tab_index);
 
     },
 
@@ -571,24 +603,29 @@ export default {
 
       let index = data.indexOf({ status: 'New' }); 
 
-      data.splice(index, 1);
+      if(!this.tableHasError[tab_index].error)
+      {
+        data.splice(index, 1);
 
-      let arrData = []; 
-
-      editedItem.data.forEach((val, i) => {
-        arrData.push({
-          value: val.value,
-          field_name: val.field_name,
-          description: val.description, 
-          type: val.type,
-          has_options: val.has_options,
-          options: val.sap_table_field_options,
+        let arrData = []; 
+        
+        editedItem.data.forEach((val, i) => {
+          arrData.push({
+            value: val.value,
+            field_name: val.field_name,
+            description: val.description, 
+            type: val.type,
+            has_options: val.has_options,
+            options: val.sap_table_field_options,
+          });
         });
-      });
 
-      data.push(arrData);
-      this.refreshTabData(tab_index);
-      this.resetRow(tab_index);
+        data.push(arrData);
+        this.refreshTabData(tab_index);
+        this.resetRow(tab_index);
+      }
+
+      
   
     },
 
@@ -661,7 +698,7 @@ export default {
 
       let index = this.child_table_fields[tab_index].data.indexOf({ status: "New" });
 
-      if (this.tableRowMode === "Add") {
+      if (this.tableRowMode[tab_index].mode === "Add") {
         this.child_table_fields[tab_index].data.splice(index, 1);
       }
       this.resetRow(tab_index);
@@ -742,10 +779,11 @@ export default {
 
     resetRow(tab_index) {
       // this.editedItem = [];
-      this.tableRowMode = "";
-      this.rowUnsaved = false;
-
-      this.editedIndex[tab_index].index = -1
+      this.tableRowMode[tab_index].mode = "";
+      this.rowUnsaved[tab_index] = Object.assign({status: false, errorMsg: ""});
+      this.editedIndex[tab_index].index = -1;
+      this.tableRowMode[tab_index].mode = "";
+      this.tableHasError[tab_index] =  Object.assign({}, {error: false, errorMsg: ""});
       // reset editedItem values
       let data = this.editedItem[tab_index].data;
       data.forEach((val, i) => {
@@ -762,14 +800,14 @@ export default {
     },
 
     validateField(table_type, row, tab_index) {
-
+      
       let type = "";
       let spChars1 = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/; //all special characters
       let spChars2 = /[!@#$%^&*()_+\-=\[\]{};':"\\|,<>\/?]+/; //all special characters whithout period/dot (.)
       let invalid = false;
       let field = table_type == 'Header' ? this.parent_table_fields[row] : this.editedItem[tab_index].data[row] ;
       let value = field.value;
-
+      
       field.error = false;
       field.errorMsg = "";
       type = field.type;   
@@ -783,21 +821,23 @@ export default {
         }
       }
 
-      if(type === 'integer')
-      { 
-        // validate integer with whole number only without period (.)
-        invalid = parseInt(value) && !spChars1.test(value) ? false : true;
-      }
-      else if(type === 'decimal')
+      // if has value then validate
+      if(value)
       {
-        invalid = parseFloat(value) && !spChars2.test(value) ? false : true;
-      }
-      else if(type === 'date')
-      {
-        let dateString = value;
-        let timestamp = Date.parse(dateString);
-
-        invalid = isNaN(timestamp) ? true : false;
+        if(type === 'integer')
+        { 
+          // validate integer with whole number only without period (.)
+          invalid = !isNaN(parseInt(value)) && !spChars1.test(value) ? false : true;
+        }
+        else if(type === 'decimal')
+        {
+          invalid = !isNaN(parseFloat(value)) && !spChars2.test(value) ? false : true;
+        }
+        else if(type === 'date')
+        {
+          let dateIsValid = moment(value, 'M/D/YYYY',true).isValid();
+          invalid = dateIsValid ? false : true;
+        }
       }
 
       if(!field.error)
@@ -805,11 +845,35 @@ export default {
         if(invalid)
         {
           field.error = true;
-          field.errorMsg = field.description + ' must be type ' + field.type;
+          let str = "";
+          if(type === 'date')
+          {
+            str = " (MM/DD/YYYY) format"
+          }
+          field.errorMsg = field.description + ' must be type ' + field.type + str;
         }
       }
+      
+      this.child_tables.forEach((value, index) => {
+        this.tableHasError[index] = Object.assign({}, {error: false, errorMsg: ""});
+        let errorMsg = [];
+        let hasError = false;
+        this.editedItem[index].data.forEach((val, i) => {
+          if(val.error)
+          {
+            hasError = true;
+            errorMsg.push(val.errorMsg);
+          }
+        });
+        this.tableHasError[index] = Object.assign({}, {error: hasError, errorMsg: errorMsg.join(', ')});
+      });
 
-      this.refreshTabData(tab_index);
+      if(table_type === 'Row')
+      {
+        this.refreshTabData(tab_index);
+      }
+
+      this.rowUnsaved[tab_index] = Object.assign({status: false, errorMsg: ""});
       
     },
 
@@ -818,12 +882,28 @@ export default {
       this.tab = tab_index;
     },
 
+    rowError() {
+      let hasError = false;
+      let tab_index = null;
+      this.child_tables.forEach((value, index) => {
+        if(this.rowUnsaved[index].status)
+        {
+          hasError = true;
+          tab_index = index;
+        }
+      });
+
+      this.tab = tab_index;
+  
+      return hasError;
+    },
+
     validateRow() {
 
     },
 
-    updateScroll(table_id) {
-      var element = document.getElementById("table_id");
+    updateScroll(tab_index) {
+      var element = document.getElementById("child_table"+tab_index);
       element.scrollTop = element.scrollHeight;
     },
     
@@ -853,19 +933,34 @@ export default {
       return `${month}/${day}/${year}`;
     },
  
-    formatHeaderDateValue(i, tab_index) {
+    formatHeaderDateValue(i) {
+      this.validateField('Header', i, null);
       let value = this.parent_table_fields[i].value;
       this.parent_table_fields[i].formatted_date = this.formatDate(value);
-
     },
     formatRowDateValue(i, tab_index) {
+      this.validateField('Row', i, tab_index);
       let value = this.editedItem[tab_index].data[i].value;
       this.editedItem[tab_index].data[i].formatted_date = this.formatDate(value);
+      this.refreshTabData(tab_index);
     },
 
     rowFieldColor(tab_index, index){
       // if edit mode then set the color of edited row into 'red lighten-5' or 'blue lighten-5' else ''
-      return index === this.editedIndex[tab_index].index ? this.rowError ? 'red lighten-5' : 'blue lighten-5' : ''
+      let className = '';
+      if(index === this.editedIndex[tab_index].index)
+      {
+        if(this.tableHasError[tab_index].error || this.rowUnsaved[tab_index].status)
+        {
+          className = 'red lighten-5';
+        }
+        else
+        {
+          className = 'blue lighten-5';
+        }
+      }
+
+      return className;
     },
     
   },
@@ -887,23 +982,8 @@ export default {
 
       return hasError;
     },
-    rowError() {
-      let hasError = false;
-      
-      this.child_tables.forEach((value, index) => {
-
-        let data = this.editedItem[index].data;
-        data.forEach((val, i) => {
-          if(val.error)
-          {
-            hasError = true;
-          }
-        });
-        
-      });
-      return hasError;
-    },
     
+        
   },
   watch: {
     $route(to, from) {

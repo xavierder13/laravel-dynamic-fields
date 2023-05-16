@@ -9,12 +9,14 @@ import 'sweetalert2/dist/sweetalert2.min.css';
 // import VueSocketio from 'vue-socket.io';
 import store from './store';
 import IdleVue from "idle-vue";
+import Moment from 'moment';
 
 // Vue.use(VueSocketio, 'http://localhost:4000');
 Vue.use(Vuetify);   
 Vue.use(VuetifyMask);
 Vue.use(Vuelidate);
 Vue.use(VueSweetalert2);
+Vue.use(Moment);
 Vue.use(IdleVue, {
   eventEmitter: new Vue(),
   store,

@@ -1655,15 +1655,15 @@ export default {
       let invalid = false;
       let spChars1 = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/; //all special characters
       let spChars2 = /[!@#$%^&*()_+\-=\[\]{};':"\\|,<>\/?]+/; //all special characters whithout period/dot (.)
-
+    
       if(type === 'integer')
       { 
         // validate integer with whole number only without period (.)
-        invalid = parseInt(value) && !spChars1.test(value) ? false : true;
+        invalid = !isNaN(parseInt(value)) && !spChars1.test(value) ? false : true;
       }
       else if(type === 'decimal')
       {
-        invalid = parseFloat(value) && !spChars2.test(value) ? false : true;
+        invalid = !isNaN(parseFloat(value)) && !spChars2.test(value) ? false : true;
       }
       else if(type === 'date')
       {
@@ -1672,6 +1672,7 @@ export default {
 
         invalid = isNaN(timestamp) ? true : false;
       }
+      
       return invalid;
     },
 
