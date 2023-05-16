@@ -23,7 +23,7 @@
             <v-divider vertical class="mx-2"></v-divider>
             <v-tooltip top>
               <template v-slot:activator="{ on, attrs }">
-                <v-icon v-bind="attrs" v-on="on" large class="mr-2" color='blue darken-2' :disabled="mode === 'Add'" @click="">mdi-file-plus</v-icon>
+                <v-icon v-bind="attrs" v-on="on" large class="mr-2" color='blue darken-2' :disabled="mode === 'Add'" @click="mode = 'Add'">mdi-file-plus</v-icon>
               </template>
               <span>Add Mode</span>
             </v-tooltip>
@@ -500,7 +500,7 @@ export default {
 
             let table_name = value.table_name;
 
-            this.child_table_fields[index] = Object.assign({}, { fields: [], data: [] });
+            this.child_table_fields[index] = Object.assign({}, { table_name: table_name, fields: [], data: [] });
             this.editedItem[index] = Object.assign({}, { data: [] });
             this.editedIndex[index] = Object.assign({index: -1});
             this.tableHasError[index] = Object.assign({error: false, errorMsg: "" });
@@ -544,8 +544,6 @@ export default {
     },
 
     saveData() {
-      
-      this.disabled = true;
 
       this.parent_table_fields.forEach((value, i) => {
         this.validateField('Header', i, null);
@@ -558,12 +556,21 @@ export default {
     
       if(!this.headerError && !this.rowError() )
       {
-        this.getTableFields();
-        this.overlay = true;
-      }
 
-      this.disabled = false
-      
+        this.overlay = true;
+        this.disabled = true;
+
+        if(this.mode === 'Add')
+        {
+          this.storeData();
+        }
+        else if(this.mode === 'Edit')
+        {
+          this.updateData();
+        }
+       
+      }
+       
     },
 
     async newRow(tab_index)
@@ -624,9 +631,38 @@ export default {
         this.refreshTabData(tab_index);
         this.resetRow(tab_index);
       }
+    },
 
+    storeData() {
       
-  
+      const data = {
+        header: this.parent_table_fields,
+        row: this.child_table_fields,
+      }
+
+      axios.post('/api/sap/module/store', data).then(
+        (response) => {
+          console.log(response);
+          let data = response.data;
+          if(data.success)
+          {
+            this.showAlert(data.success);
+            this.resetData();
+            this.getTableFields();
+          }
+          
+        },
+        (error) => {
+
+        }
+      )
+
+      this.disabled = false;
+      this.overlay = false;
+    },
+
+    updateData() {
+
     },
 
     storeRow(tab_index) { 

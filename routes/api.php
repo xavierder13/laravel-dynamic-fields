@@ -88,15 +88,22 @@ Route::group(['prefix' => 'user', 'middleware' => ['auth:api', 'user.maintenance
 //Permissions
 Route::group(['prefix' => 'sap', 'middleware' => ['auth:api']], function(){
 
-    Route::get('/module/{id}', [
-        'uses' => 'API\SAPModuleController@get_table_fields',
-        'as' => 'get.table.fields',
-    ]);
-
+    
     Route::get('/modules', [
         'uses' => 'API\SAPModuleController@get_parent_tables',
         'as' => 'get.parent.tables',
     ]);
+
+    Route::group(['prefix' => 'module'], function(){
+        Route::get('/{id}', [
+            'uses' => 'API\SAPModuleController@get_table_fields',
+            'as' => 'get.table.fields',
+        ]);
+        Route::post('/store', [
+            'uses' => 'API\SAPModuleController@store',
+            'as' => 'sap.module.store',
+        ]);
+    });
 
     Route::group(['prefix' => 'udf'], function(){
         Route::get('/index', [

@@ -60,6 +60,8 @@ class SAPModuleController extends Controller
     
     public function store(Request $request)
     {   
+        $header = $request->get('header');
+        return $row = $request->get('row');
         $table_name = $request->get('table_name');
 
         $columns = Schema::getColumnListing($table_name);
@@ -74,6 +76,7 @@ class SAPModuleController extends Controller
                 }
             }
         }
+
         $table_id = DB::table($table_name)->insertGetId($data);
         $table_data = DB::table($table_name)->where('id', '=', $table_id)->first()->toArray();
 
