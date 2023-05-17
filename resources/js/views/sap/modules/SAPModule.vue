@@ -19,17 +19,36 @@
         </v-breadcrumbs>
         <v-card>
           <v-card-title class="mb-0 pb-0">
-            <span class="headline">{{ mode === 'Add' ? 'Create' : 'Update' }} {{ parent_table.description }}</span>
+            <span class="headline">{{ parent_table.description }}</span>
             <v-divider vertical class="mx-2"></v-divider>
             <v-tooltip top>
               <template v-slot:activator="{ on, attrs }">
-                <v-icon v-bind="attrs" v-on="on" large class="mr-2" color='blue darken-2' :disabled="mode === 'Add'" @click="mode = 'Add'">mdi-file-plus</v-icon>
+                <v-icon 
+                  v-bind="attrs" 
+                  v-on="on" 
+                  large 
+                  class="mr-2" 
+                  color='blue darken-2' 
+                  :disabled="mode === 'Add'" 
+                  @click="getTableFields() + (mode = 'Add')"
+                >
+                  mdi-file-plus
+                </v-icon>
               </template>
               <span>Add Mode</span>
             </v-tooltip>
             <v-tooltip top>
               <template v-slot:activator="{ on, attrs }">
-                <v-icon v-bind="attrs" v-on="on" large color='blue darken-2' :disabled="mode === 'Find'" @click="mode = 'Find'">mdi-file-find</v-icon>
+                <v-icon 
+                  v-bind="attrs" 
+                  v-on="on" 
+                  large 
+                  color='blue darken-2' 
+                  :disabled="mode === 'Find'" 
+                  @click="getTableFields() + (mode = 'Find')"
+                >
+                mdi-file-find
+              </v-icon>
               </template>
               <span>Find Mode</span>
             </v-tooltip>
@@ -37,21 +56,22 @@
           <v-divider></v-divider>
           <v-card-text class="pa-6">
             <v-row>
-              <template v-for="(field, i) in parent_table_fields">
+              <template v-for="(field, i) in parent_table_fields.data">
                 <v-col cols="3" class="mt-0 mb-0 pt-0 pb-0">
+                  
                   <template v-if="field.has_options">
                     <v-autocomplete
                       class="pa-0"
-                      :label="field.description"
+                      :label="field.description + (field.is_required ? ' *' : '')"
                       :name="field.field_name"
                       :items="field.options"
-                      v-model="parent_table_fields[i].value"
+                      v-model="field.value"
                       item-text="description"
                       item-value="value"
                       required
                       dense
-                      :error-messages="parent_table_fields[i].errorMsg"
-                      @input="validateField('Header', i, parent_table_fields[i].value)"
+                      :error-messages="field.errorMsg"
+                      @input="validateField('Header', i, field.value)"
                       @blur="validateField('Header', i, null)"
                     >
                       <template slot="selection" slot-scope="data">
@@ -68,11 +88,11 @@
                     <!-- if Field Type string -->
                     <v-text-field
                       class="pa-0"
-                      :label="field.description"
+                      :label="field.description + (field.is_required ? ' *' : '')"
                       :name="field.field_name"
-                      v-model="parent_table_fields[i].value"
+                      v-model="field.value"
                       dense
-                      :error-messages="parent_table_fields[i].errorMsg"
+                      :error-messages="field.errorMsg"
                       @input="validateField('Header', i, null)"
                       @blur="validateField('Header', i, null)"
                       v-if="['string', 'date'].includes(field.type)"
@@ -115,14 +135,14 @@
                     <!-- if Field Type integer -->
                     <v-text-field-integer
                       class="pa-0"
-                      v-model="parent_table_fields[i].value"
+                      v-model="field.value"
+                      :label="field.description + (field.is_required ? ' *' : '')"
                       v-bind:properties="{
-                        label: field.description,
                         name: field.field_name,
                         placeholder: '0',
                         dense: true,
-                        error: parent_table_fields[i].error,
-                        messages: parent_table_fields[i].errorMsg,
+                        error: field.error,
+                        messages: field.errorMsg,
                       }"
                       @input="validateField('Header', i, null)"
                       @blur="validateField('Header', i, null)"
@@ -134,13 +154,13 @@
                     <v-text-field-money
                       class="pa-0"
                       v-model="parent_table_fields[i].value"
+                      :label="field.description + (field.is_required ? ' *' : '')"
                       v-bind:properties="{
-                        label: field.description,
                         name: field.field_name,
                         placeholder: '0',
                         dense: true,
-                        error: parent_table_fields[i].error,
-                        messages: parent_table_fields[i].errorMsg,
+                        error: field.error,
+                        messages: field.errorMsg,
                       }"
                       v-bind:options="{
                         length: 11,
@@ -156,7 +176,7 @@
                 </v-col>
               </template>
             </v-row>
-            <v-row v-if="child_tables.length">
+            <v-row v-if="child_tables.length && mode !== 'Find'">
               <v-col>
                 <v-card>
                   <v-card-text>
@@ -178,7 +198,7 @@
                               <tr>
                                 <th class="pa-2" width="10px">#</th>
                                 <th class="pa-2" v-for="(field, j) in child_table_fields[i].fields" :key="j"> 
-                                  {{ field.description }}
+                                  {{ field.description + (field.is_required ? ' *' : '') }}
                                 </th>
                                 <th class="pa-2" width="80px"> Actions</th>
                               </tr>
@@ -378,7 +398,6 @@
                     </v-tabs-items>
                   </v-card-text>
                 </v-card>
-                
               </v-col>
             </v-row>
           </v-card-text>
@@ -386,15 +405,50 @@
           <v-card-actions class="pa-0">
             <v-btn
               color="primary"
-              @click="saveData()"
+              @click="submitData()"
               :disabled="disabled"
               class="ml-6 mb-4 mr-1"
             >
-              {{ mode }}
+              {{ mode === 'Edit' ? 'Update' : mode }}
             </v-btn>
             <v-btn color="#E0E0E0" to="/" class="mb-4"> Cancel </v-btn>
           </v-card-actions>
         </v-card>
+        <v-dialog v-model="dialog" max-width="1000px" persistent>
+          <v-card>
+            <v-card-title>
+              <span class="headline">Search List</span>
+                <v-spacer></v-spacer>
+                <v-text-field
+                  v-model="search"
+                  append-icon="mdi-magnify"
+                  label="Search"
+                  single-line
+                ></v-text-field>
+                <v-spacer></v-spacer>
+
+                <v-icon @click="dialog = false">mdi-close</v-icon>
+            </v-card-title>
+            <v-card-text>
+              <v-data-table
+                :headers="search_headers"
+                :items="search_list"
+                :search="search"
+                :loading="loading"
+                loading-text="Loading... Please wait"
+                class="elevation-1 "
+              > 
+                <template v-slot:item="{ item }">
+                  <tr @click="selectSearchList(item)" style="cursor: pointer;">
+                    <td v-for="column in search_headers"> 
+                      {{ formatDate(item[column.value]) ? formatDate(item[column.value]) : item[column.value] }}
+                    </td>
+                  </tr>
+                </template>
+              </v-data-table>
+            </v-card-text>
+          </v-card>
+        </v-dialog>
       </v-main>
     </div>
   </div>
@@ -441,7 +495,7 @@ export default {
 
       disabled: false,
       parent_table: "",
-      parent_table_fields: [],
+      parent_table_fields: "",
       child_tables: [],
       child_table_fields: [],
       editedIndex: [],
@@ -455,6 +509,11 @@ export default {
       row_date_menu: [],
       formattedDateValue: [],
       tableHasError: [],
+      search: "",
+      search_list: [],
+      search_headers: [],
+      loading: false,
+      dialog: false,
     };
   },
 
@@ -478,10 +537,12 @@ export default {
           let parent_table_fields = data.parent_table_fields;
           let child_table_fields = data.child_table_fields;
 
+          this.parent_table_fields = Object.assign({}, { table_name: this.parent_table.table_name, data: []});
+
           // assign header fields
           parent_table_fields.forEach((value, index) => {
             
-            this.parent_table_fields.push({
+            this.parent_table_fields.data.push({
               value: '',
               field_name: value.field_name,
               description: value.description, 
@@ -502,10 +563,10 @@ export default {
 
             this.child_table_fields[index] = Object.assign({}, { table_name: table_name, fields: [], data: [] });
             this.editedItem[index] = Object.assign({}, { data: [] });
-            this.editedIndex[index] = Object.assign({index: -1});
-            this.tableHasError[index] = Object.assign({error: false, errorMsg: "" });
-            this.tableRowMode[index] =  Object.assign({mode: ""});
-            this.rowUnsaved[index] =  Object.assign({status: false, errorMsg: ""});
+            this.editedIndex[index] = Object.assign({ index: -1 });
+            this.tableHasError[index] = Object.assign({ error: false, errorMsg: "" });
+            this.tableRowMode[index] =  Object.assign({ mode: "" });
+            this.rowUnsaved[index] =  Object.assign({ status: false, errorMsg: "" });
 
             child_table_fields.forEach((val, i) => {
 
@@ -515,6 +576,7 @@ export default {
                   field_name: val.field_name,
                   description: val.description, 
                   type: val.type,
+                  is_required: val.is_required,
                   has_options: val.has_options,
                   options: val.sap_table_field_options,
                 });
@@ -543,33 +605,154 @@ export default {
       );
     },
 
-    saveData() {
-
-      this.parent_table_fields.forEach((value, i) => {
-        this.validateField('Header', i, null);
-      });
-
-      this.child_tables.forEach((value, index) => {
-        this.rowUnsaved[index].status = this.tableRowMode[index].mode ? true : false;
-        this.rowUnsaved[index].errorMsg = this.rowUnsaved[index].status ? 'There are unsaved data' : '';
-      });
+    findData() {
+      let sap_table_id = this.$route.params.sap_table_id;
+      this.search_list = [];
+      axios.post('/api/sap/module/find/'+sap_table_id, this.parent_table_fields).then(
+        (response) => {
+          let data = response.data.data;
+          let table_fields = response.data.table_fields;
     
-      if(!this.headerError && !this.rowError() )
+          if(data.length)
+          {
+            this.dialog = true;
+            this.search_headers.push({text: 'ID', value: 'id'});
+            table_fields.forEach(value => {
+              this.search_headers.push({text: value.description, value: value.field_name});
+            });
+            this.search_list = data;
+          }
+          else
+          {
+            this.$swal({
+              position: "center",
+              icon: "error",
+              title: "No record found",
+              showConfirmButton: false,
+              timer: 2500,
+            });
+          }
+          
+        },
+        (error) => {
+
+        },
+      )
+    },
+
+    selectSearchList(item) {
+    
+      let sap_table_id = this.$route.params.sap_table_id;
+      const data = { sap_table_id: sap_table_id, id: item.id };
+      axios.post('/api/sap/module/data', data).then(
+        (response) => {
+          console.log(response.data);
+          let data = response.data;
+          let header_data = data.header_data;
+          let row_data = data.row_data;
+
+          this.parent_table_fields.data.forEach((value, index) => {
+            let field_value = header_data[value.field_name];
+
+            field_value = value.type === 'date' ? this.formatDate(field_value) : field_value;
+
+            this.parent_table_fields.data[index].value = field_value;
+            this.parent_table_fields.data[index].formatted_date = this.formatDate(header_data[value.field_name]);
+          });
+
+           
+          this.child_table_fields.forEach((value, index) => {
+            
+            row_data.forEach((row, i) => {
+
+              if(value.table_name === row.table_name)
+              { 
+                let fields = this.child_table_fields[index].fields;
+                let table_data = row.data;
+
+                table_data.forEach(data => {
+                  let arrData = [];
+                  fields.forEach(field => {
+                    let field_value = data[field.field_name];
+
+                    field_value = field.type === 'date' ? this.formatDate(field_value) : field_value;
+
+                    arrData.push({
+                      value: field_value,
+                      field_name: field.field_name,
+                      description: field.description, 
+                      type: field.type,
+                      has_options: field.has_options,
+                      options: field.options,
+                    });
+                    
+                    
+                  });
+                  console.log(arrData);
+                  this.child_table_fields[index].data.push(arrData)
+                  
+                });
+
+                
+
+              }
+
+            });
+            
+          });
+
+          // value: val.value,
+          //   field_name: val.field_name,
+          //   description: val.description, 
+          //   type: val.type,
+          //   has_options: val.has_options,
+          //   options: val.sap_table_field_options,
+          
+          this.mode = "Edit";
+          this.dialog = false;
+        },
+        (error) => {
+          console.log(response);
+        }
+      )
+
+    },
+
+    submitData() {
+
+      if(this.mode === 'Find') 
       {
-
-        this.overlay = true;
-        this.disabled = true;
-
-        if(this.mode === 'Add')
-        {
-          this.storeData();
-        }
-        else if(this.mode === 'Edit')
-        {
-          this.updateData();
-        }
-       
+        this.findData();
       }
+      else
+      {
+        this.parent_table_fields.data.forEach((value, i) => {
+          this.validateField('Header', i, null);
+        });
+
+        this.child_tables.forEach((value, index) => {
+          this.rowUnsaved[index].status = this.tableRowMode[index].mode ? true : false;
+          this.rowUnsaved[index].errorMsg = this.rowUnsaved[index].status ? 'There are unsaved data' : '';
+        });
+      
+        if(!this.headerError && !this.rowError() )
+        {
+
+          this.overlay = true;
+          this.disabled = true;
+
+          if(this.mode === 'Add')
+          {
+            this.storeData();
+          }
+          else if(this.mode === 'Edit')
+          {
+            this.updateData();
+          }
+        
+        }
+      }
+      
        
     },
 
@@ -803,7 +986,7 @@ export default {
     resetData() {
       this.disabled = false;
       this.mode = "Add";
-      this.parent_table_fields = [];
+      this.parent_table_fields = "";
       this.child_tables = [];
       this.child_table_fields = [];
       this.tab = null;
@@ -836,80 +1019,83 @@ export default {
     },
 
     validateField(table_type, row, tab_index) {
-      
-      let type = "";
-      let spChars1 = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/; //all special characters
-      let spChars2 = /[!@#$%^&*()_+\-=\[\]{};':"\\|,<>\/?]+/; //all special characters whithout period/dot (.)
-      let invalid = false;
-      let field = table_type == 'Header' ? this.parent_table_fields[row] : this.editedItem[tab_index].data[row] ;
-      let value = field.value;
-      
-      field.error = false;
-      field.errorMsg = "";
-      type = field.type;   
-
-      if(field.is_required)
+      // validate when mode not equal to 'fidn'
+      if(this.mode !== 'Find')
       {
-        if(!value)
-        {
-          field.error = true;
-          field.errorMsg = field.description + ' is required';
-        }
-      }
+        let type = "";
+        let spChars1 = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/; //all special characters
+        let spChars2 = /[!@#$%^&*()_+\-=\[\]{};':"\\|,<>\/?]+/; //all special characters whithout period/dot (.)
+        let invalid = false;
+        let field = table_type == 'Header' ? this.parent_table_fields.data[row] : this.editedItem[tab_index].data[row] ;
+        let value = field.value;
+        
+        field.error = false;
+        field.errorMsg = "";
+        type = field.type;   
 
-      // if has value then validate
-      if(value)
-      {
-        if(type === 'integer')
-        { 
-          // validate integer with whole number only without period (.)
-          invalid = !isNaN(parseInt(value)) && !spChars1.test(value) ? false : true;
-        }
-        else if(type === 'decimal')
+        if(field.is_required)
         {
-          invalid = !isNaN(parseFloat(value)) && !spChars2.test(value) ? false : true;
-        }
-        else if(type === 'date')
-        {
-          let dateIsValid = moment(value, 'M/D/YYYY',true).isValid();
-          invalid = dateIsValid ? false : true;
-        }
-      }
-
-      if(!field.error)
-      {
-        if(invalid)
-        {
-          field.error = true;
-          let str = "";
-          if(type === 'date')
+          if(!value)
           {
-            str = " (MM/DD/YYYY) format"
+            field.error = true;
+            field.errorMsg = field.description + ' is required';
           }
-          field.errorMsg = field.description + ' must be type ' + field.type + str;
         }
-      }
-      
-      this.child_tables.forEach((value, index) => {
-        this.tableHasError[index] = Object.assign({}, {error: false, errorMsg: ""});
-        let errorMsg = [];
-        let hasError = false;
-        this.editedItem[index].data.forEach((val, i) => {
-          if(val.error)
-          {
-            hasError = true;
-            errorMsg.push(val.errorMsg);
+
+        // if has value then validate
+        if(value)
+        {
+          if(type === 'integer')
+          { 
+            // validate integer with whole number only without period (.)
+            invalid = !isNaN(parseInt(value)) && !spChars1.test(value) ? false : true;
           }
+          else if(type === 'decimal')
+          {
+            invalid = !isNaN(parseFloat(value)) && !spChars2.test(value) ? false : true;
+          }
+          else if(type === 'date')
+          {
+            let dateIsValid = moment(value, 'M/D/YYYY',true).isValid();
+            invalid = dateIsValid ? false : true;
+          }
+        }
+
+        if(!field.error)
+        {
+          if(invalid)
+          {
+            field.error = true;
+            let str = "";
+            if(type === 'date')
+            {
+              str = " (MM/DD/YYYY) format"
+            }
+            field.errorMsg = field.description + ' must be type ' + field.type + str;
+          }
+        }
+        
+        this.child_tables.forEach((value, index) => {
+          this.tableHasError[index] = Object.assign({}, {error: false, errorMsg: ""});
+          let errorMsg = [];
+          let hasError = false;
+          this.editedItem[index].data.forEach((val, i) => {
+            if(val.error)
+            {
+              hasError = true;
+              errorMsg.push(val.errorMsg);
+            }
+          });
+          this.tableHasError[index] = Object.assign({}, {error: hasError, errorMsg: errorMsg.join(', ')});
         });
-        this.tableHasError[index] = Object.assign({}, {error: hasError, errorMsg: errorMsg.join(', ')});
-      });
 
-      if(table_type === 'Row')
-      {
-        this.refreshTabData(tab_index);
+        if(table_type === 'Row')
+        {
+          this.refreshTabData(tab_index);
+        }
+
+        this.rowUnsaved[tab_index] = Object.assign({status: false, errorMsg: ""});
       }
-
-      this.rowUnsaved[tab_index] = Object.assign({status: false, errorMsg: ""});
       
     },
 
@@ -971,8 +1157,8 @@ export default {
  
     formatHeaderDateValue(i) {
       this.validateField('Header', i, null);
-      let value = this.parent_table_fields[i].value;
-      this.parent_table_fields[i].formatted_date = this.formatDate(value);
+      let value = this.parent_table_fields.data[i].value;
+      this.parent_table_fields.data[i].formatted_date = this.formatDate(value);
     },
     formatRowDateValue(i, tab_index) {
       this.validateField('Row', i, tab_index);
@@ -1009,7 +1195,7 @@ export default {
     },
     headerError() {
       let hasError = false;
-      this.parent_table_fields.forEach(value => {
+      this.parent_table_fields.data.forEach(value => {
         if(value.error)
         {
           hasError = true;

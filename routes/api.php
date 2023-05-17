@@ -103,6 +103,15 @@ Route::group(['prefix' => 'sap', 'middleware' => ['auth:api']], function(){
             'uses' => 'API\SAPModuleController@store',
             'as' => 'sap.module.store',
         ]);
+        Route::post('/find/{id}', [
+            'uses' => 'API\SAPModuleController@find',
+            'as' => 'sap.module.find',
+        ]);
+        Route::post('/data', [
+            'uses' => 'API\SAPModuleController@get_data',
+            'as' => 'sap.module.get_data',
+        ]);
+
     });
 
     Route::group(['prefix' => 'udf'], function(){

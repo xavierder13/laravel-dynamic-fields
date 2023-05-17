@@ -703,6 +703,7 @@ class SAPUDFController extends Controller
     {
         
         $type = $request->get('type');
+        $table_type = $request->get('table_type');
         $table_name = $request->get('table_name');
         $id = $request->get('id');
 
@@ -726,8 +727,9 @@ class SAPUDFController extends Controller
             // END validate table and fields if exists
 
             // START create table and fields
-            Schema::create($table_name, function (Blueprint $table) use ($fields) {
+            Schema::create($table_name, function (Blueprint $table) use ($fields, $table_type) {
                 $table->id();
+                $table_type === 'Row' ? $table->integer('parent_id') : '';
                 foreach ($fields as $field) {
                     $type = $field['type'];
                     $is_required = $field['is_required'];

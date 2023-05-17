@@ -920,6 +920,7 @@ export default {
       {
         data = {
           type: type,
+          table_type: item.type,
           id: item.id,
           table_name : item.table_name,
           fields: item.sap_table_fields
