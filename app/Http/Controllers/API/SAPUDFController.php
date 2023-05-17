@@ -674,6 +674,7 @@ class SAPUDFController extends Controller
     {   
         $table_name = $item['table_name'];
         $field_value = null;
+        
         if($type === 'Header')
         {   
             if(Schema::hasTable($table_name)) // if table exists

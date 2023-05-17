@@ -27,7 +27,6 @@
                   v-bind="attrs" 
                   v-on="on" 
                   large 
-                  class="mr-2" 
                   color='blue darken-2' 
                   :disabled="mode === 'Add'" 
                   @click="getTableFields() + (mode = 'Add')"
@@ -608,6 +607,7 @@ export default {
     findData() {
       let sap_table_id = this.$route.params.sap_table_id;
       this.search_list = [];
+      this.search_headers = [];
       axios.post('/api/sap/module/find/'+sap_table_id, this.parent_table_fields).then(
         (response) => {
           let data = response.data.data;
