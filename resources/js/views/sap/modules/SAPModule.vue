@@ -179,7 +179,7 @@
               <v-col>
                 <v-card>
                   <v-card-text>
-                    <v-tabs v-model="tab">
+                    <v-tabs v-model="tab" ref="child_table_tabs">
                       <v-tab v-for="(child, i) in child_tables" :key="child.table_name">
                         {{ child.description }}
 
@@ -513,6 +513,7 @@ export default {
       search_headers: [],
       loading: false,
       dialog: false,
+      card_width: "",
     };
   },
 
@@ -742,12 +743,11 @@ export default {
         
         }
       }
-      
-       
     },
 
     async newRow(tab_index)
     {
+ 
       this.tableRowMode[tab_index].mode = "Add";
       let data = this.child_table_fields[tab_index].data;
 
@@ -781,29 +781,35 @@ export default {
         this.validateField('Row', i, tab_index);
       });
 
-      let index = data.indexOf({ status: 'New' }); 
-
-      if(!this.tableHasError[tab_index].error)
+      if(this.mode === 'Add')
       {
-        data.splice(index, 1);
+        let index = data.indexOf({ status: 'New' }); 
 
-        let arrData = []; 
-        
-        editedItem.data.forEach((val, i) => {
-          arrData.push({
-            value: val.value,
-            field_name: val.field_name,
-            description: val.description, 
-            type: val.type,
-            has_options: val.has_options,
-            options: val.sap_table_field_options,
+        if(!this.tableHasError[tab_index].error)
+        {
+          data.splice(index, 1);
+
+          let arrData = []; 
+          
+          editedItem.data.forEach((val, i) => {
+            arrData.push({
+              value: val.value,
+              field_name: val.field_name,
+              description: val.description, 
+              type: val.type,
+              has_options: val.has_options,
+              options: val.sap_table_field_options,
+            });
           });
-        });
 
-        data.push(arrData);
-        this.refreshTabData(tab_index);
-        this.resetRow(tab_index);
+          data.push(arrData);
+          this.refreshTabData(tab_index);
+          this.resetRow(tab_index);
+        }
+        
       }
+
+      
     },
 
     storeData() {
@@ -1212,6 +1218,8 @@ export default {
   mounted() {
     axios.defaults.headers.common["Authorization"] = "Bearer " + localStorage.getItem("access_token");
     this.getTableFields();
+
+    
    
   },
 };
