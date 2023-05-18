@@ -236,7 +236,7 @@ export default {
           (response) => {
             if (response.data.success) {
               // send data to Sockot.IO Server
-              this.$socket.emit("sendData", { action: "user-create" });
+              // this.$socket.emit("sendData", { action: "user-create" });
 
               this.showAlert();
               this.clear();

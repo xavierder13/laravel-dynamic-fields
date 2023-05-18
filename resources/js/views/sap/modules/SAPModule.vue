@@ -190,7 +190,7 @@
                         <v-simple-table 
                           class="elevation-1 child_table" 
                           :id="'child_table' + i" 
-                          style="max-height: 250px; overflow-y: scroll; overflow-y: auto !important"
+                          style="max-height: 250px; overflow-y: auto; !important"
                         >
                           <template v-slot:default>
                             <thead>
@@ -416,7 +416,7 @@
         <v-dialog v-model="dialog" max-width="1000px" persistent>
           <v-card>
             <v-card-title>
-              <span class="headline">Search List</span>
+              <span class="headline">List of {{ parent_table.description }}</span>
                 <v-spacer></v-spacer>
                 <v-text-field
                   v-model="search"
@@ -524,7 +524,7 @@ export default {
       let sap_table_id = this.$route.params.sap_table_id;
       axios.get("/api/sap/module/"+ sap_table_id).then(
         (response) => {
-          console.log(response.data);
+      
           let data = response.data;
           
           this.parent_table = data.parent_table;
@@ -686,27 +686,17 @@ export default {
                       options: field.options,
                     });
                     
-                    
                   });
-                  console.log(arrData);
+
                   this.child_table_fields[index].data.push(arrData)
                   
                 });
-
-                
 
               }
 
             });
             
           });
-
-          // value: val.value,
-          //   field_name: val.field_name,
-          //   description: val.description, 
-          //   type: val.type,
-          //   has_options: val.has_options,
-          //   options: val.sap_table_field_options,
           
           this.mode = "Edit";
           this.dialog = false;
@@ -1147,12 +1137,18 @@ export default {
     },
   
     formatDate(date) {
-      let timestamp = Date.parse(date);
+      // let timestamp = Date.parse(date);
 
-      if (!date || isNaN(timestamp)) return null;
+      // if (!date || isNaN(timestamp)) return null;
+      
+      // const [year, month, day] = date.split("-");
+      // return `${month}/${day}/${year}`;
+
+      var date_val = moment(date, 'YYYY-MM-DD',true);
+      if (!date || !date_val.isValid()) return null;
+
+      return moment(date).format('MM/DD/YYYY');
     
-      const [year, month, day] = date.split("-");
-      return `${month}/${day}/${year}`;
     },
  
     formatHeaderDateValue(i) {

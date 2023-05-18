@@ -111,7 +111,7 @@
                               <v-simple-table 
                                 class="elevation-1" 
                                 id="sap_table_fields" 
-                                style="max-height: 250px; overflow-y: scroll; overflow-y: auto !important"
+                                style="max-height: 250px; overflow-y: auto; !important"
                               >
                                 <template v-slot:default>
                                   <thead>
@@ -366,7 +366,8 @@
                               <v-simple-table 
                                 class="elevation-1" 
                                 id="sap_table_field_options" 
-                                style="max-height: 250px; overflow-y: scroll; overflow-y: auto !important">
+                                style="max-height: 250px; overflow-y: auto; !important"
+                              >
                                 <template v-slot:default>
                                   <thead>
                                     <tr>
@@ -741,6 +742,8 @@ import { validationMixin } from "vuelidate";
 import { required, requiredIf, email } from "vuelidate/lib/validators";
 import { mapState } from "vuex";
 import OptionsTable from './components/OptionsTable.vue';
+import moment from "moment";
+
 export default {
 
   components: {
@@ -1745,12 +1748,17 @@ export default {
     },
 
     formatDate(date) {
-      let timestamp = Date.parse(date);
+      // let timestamp = Date.parse(date);
 
-      if (!date || isNaN(timestamp)) return null;
-    
-      const [year, month, day] = date.split("-");
-      return `${month}/${day}/${year}`;
+      // if (!date || isNaN(timestamp)) return null;
+      // return moment(date).format('MM/DD/YYYY');
+      // const [year, month, day] = date.split("-");
+      // return `${month}/${day}/${year}`;
+
+      var date_val = moment(date, 'YYYY-MM-DD',true);
+      if (!date || !date_val.isValid()) return null;
+
+      return moment(date).format('MM/DD/YYYY');
     },
 
     rowFieldColor(index){

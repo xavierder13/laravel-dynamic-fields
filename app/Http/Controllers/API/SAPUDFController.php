@@ -267,7 +267,9 @@ class SAPUDFController extends Controller
         $sap_table_field->has_options = $item['has_options']; 
         $sap_table_field->is_required = $item['is_required']; 
         $sap_table_field->is_multiple = false;
-        $sap_table_field->is_migrated = false;
+
+        !$sap_table_field->id ? $sap_table_field->is_migrated = false : ''; //if sap_table_id is null (add mode) then
+
         $sap_table_field->line_num = $line_num;
         $sap_table_field->save();
 
@@ -592,6 +594,7 @@ class SAPUDFController extends Controller
         $sap_table_field =  SapTableField::where('sap_table_id', '=', $sap_table->id);
         $sap_table_field_id = $sap_table_field->first()->id;
         $sap_table_field->delete();
+        
         SapTableFieldOption::where('sap_table_field_id', '=', $sap_table_field_id)->delete();
 
         return response()->json(['success' => 'Record has been deleted'], 200);

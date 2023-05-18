@@ -183,13 +183,22 @@ class SAPModuleController extends Controller
         // $field_conditions = join(" and ", $field_conditions);
 
         // return $data = DB::select("select * from ".$table_name." where ". $field_conditions);
-
             
         $data = DB::table($table_name)
                  ->select($cols)
                  ->where(function($query) use ($fields){
                     foreach ($fields as $field) {
-                        $query->where($field['field_name'], 'like', '%' . $field['value'] . '%');
+                        if(!$field['value'])
+                        {
+                            $query->where(function($q) use ($field){
+                                $q->where($field['field_name'], 'like', '%' . $field['value'] . '%')
+                                  ->orWhereNull($field['field_name']);
+                            });
+                        }
+                        else
+                        {
+                            $query->where($field['field_name'], 'like', '%' . $field['value'] . '%');
+                        }
                     }
                  })
                  ->get();
