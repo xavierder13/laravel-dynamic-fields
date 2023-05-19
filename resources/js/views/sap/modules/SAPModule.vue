@@ -661,7 +661,8 @@ export default {
             this.parent_table_fields.data[index].formatted_date = this.formatDate(header_data[value.field_name]);
           });
 
-           
+          this.parent_table_fields = Object.assign(this.parent_table_fields, { id: header_data.id });
+          
           this.child_table_fields.forEach((value, index) => {
             
             row_data.forEach((row, i) => {
@@ -689,7 +690,8 @@ export default {
                     
                   });
 
-                  this.child_table_fields[index].data.push(arrData)
+                  this.child_table_fields[index].data.push(arrData);
+                  
                   
                 });
 
@@ -698,6 +700,9 @@ export default {
             });
             
           });
+
+          console.log('header', this.parent_table_fields);
+          console.log('row', this.child_table_fields);
           
           this.mode = "Edit";
           this.dialog = false;
@@ -731,16 +736,7 @@ export default {
 
           this.overlay = true;
           this.disabled = true;
-
-          if(this.mode === 'Add')
-          {
-            this.storeData();
-          }
-          else if(this.mode === 'Edit')
-          {
-            this.updateData();
-          }
-        
+          this.saveData();
         }
       }
     },
@@ -812,14 +808,16 @@ export default {
       
     },
 
-    storeData() {
+    saveData() {
       
+      let url = this.mode === 'Add' ? '/api/sap/module/store' : '';
+
       const data = {
         header: this.parent_table_fields,
         row: this.child_table_fields,
       }
 
-      axios.post('/api/sap/module/store', data).then(
+      axios.post(url, data).then(
         (response) => {
           console.log(response);
           let data = response.data;
