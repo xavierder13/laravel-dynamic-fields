@@ -657,8 +657,12 @@ export default {
 
             field_value = value.type === 'date' ? this.formatDate(field_value) : field_value;
 
-            this.parent_table_fields.data[index].value = field_value;
-            this.parent_table_fields.data[index].formatted_date = this.formatDate(header_data[value.field_name]);
+            // this.parent_table_fields.data[index].value = field_value;
+            // this.parent_table_fields.data[index].formatted_date = this.formatDate(header_data[value.field_name]);
+
+            value.value = field_value;
+            value.formatted_date = this.formatDate(header_data[value.field_name]);
+
           });
 
           this.parent_table_fields = Object.assign(this.parent_table_fields, { id: header_data.id });
@@ -925,8 +929,11 @@ export default {
       
       row_data.forEach((val, i) => {
         
-        this.editedItem[tab_index].data[i].value = val.value;
-        this.editedItem[tab_index].data[i].formatted_date = this.formatDate(val.value);
+        // this.editedItem[tab_index].data[i].value = val.value;
+        // this.editedItem[tab_index].data[i].formatted_date = this.formatDate(val.value);
+
+        val.value = val.value;
+        val.formatted_date = this.formatDate(val.value);
 
       });
 
@@ -1069,6 +1076,7 @@ export default {
           }
         }
         
+        // scan if tab items has error
         this.child_tables.forEach((value, index) => {
           this.tableHasError[index] = Object.assign({}, {error: false, errorMsg: ""});
           let errorMsg = [];
