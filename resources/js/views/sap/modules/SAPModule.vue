@@ -519,12 +519,17 @@ export default {
 
   methods: {
     getTableFields() {
-
+      
       this.resetData();
+      this.loading = true;
+      this.overlay = true;
 
       let sap_table_id = this.$route.params.sap_table_id;
       axios.get("/api/sap/module/"+ sap_table_id).then(
         (response) => {
+
+          this.loading = false;
+          this.overlay = false;
       
           let data = response.data;
           
