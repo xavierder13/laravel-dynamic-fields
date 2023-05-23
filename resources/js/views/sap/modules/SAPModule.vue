@@ -207,11 +207,11 @@
                                 <td class="pa-2"> {{ row + 1 }} </td>
                                 <td class="pa-2" v-for="(field, col) in child_table_fields[i].fields" :key="col" >
 
-                                  <template v-if="row !== editedIndex[i].index && item.status !== 'New'">
+                                  <template v-if="!rowFieldIsActive(i, row, item)">
                                     {{ item[col].value }}
                                   </template>
 
-                                  <template v-if="row === editedIndex[i].index || item.status === 'New'">
+                                  <template v-if="rowFieldIsActive(i, row, item)">
                                     <!-- if Field has Options -->
                                     <template v-if="field.has_options">
                                       <v-autocomplete
@@ -331,7 +331,7 @@
                                     </template>
                                   </template>
                                 </td>
-                                <template v-if="row !== editedIndex[i].index && item.status !== 'New' ">
+                                <template v-if="!rowFieldIsActive(i, row, item)">
                                   <td class="pa-2">
                                     <v-icon
                                       small
@@ -353,7 +353,7 @@
                                     </v-icon>
                                   </td>
                                 </template>
-                                <template v-if="row === editedIndex[i].index ? true : false || item.status === 'New' ">
+                                <template v-if="rowFieldIsActive(i, row, item)">
                                   <td class="pa-2">
                                     <v-btn
                                       x-small
@@ -657,13 +657,10 @@ export default {
           let header_data = data.header_data;
           let row_data = data.row_data;
 
-          this.parent_table_fields.data.forEach((value, index) => {
+          this.parent_table_fields.data.forEach(value => {
             let field_value = header_data[value.field_name];
 
             field_value = value.type === 'date' ? this.formatDate(field_value) : field_value;
-
-            // this.parent_table_fields.data[index].value = field_value;
-            // this.parent_table_fields.data[index].formatted_date = this.formatDate(header_data[value.field_name]);
 
             value.value = field_value;
             value.formatted_date = this.formatDate(header_data[value.field_name]);
@@ -701,7 +698,6 @@ export default {
 
                   this.child_table_fields[index].data.push(arrData);
                   
-                  
                 });
 
               }
@@ -709,9 +705,6 @@ export default {
             });
             
           });
-
-          console.log('header', this.parent_table_fields);
-          console.log('row', this.child_table_fields);
           
           this.mode = "Edit";
           this.dialog = false;
@@ -814,7 +807,6 @@ export default {
         
       }
 
-      
     },
 
     saveData() {
@@ -934,11 +926,8 @@ export default {
       
       row_data.forEach((val, i) => {
         
-        // this.editedItem[tab_index].data[i].value = val.value;
-        // this.editedItem[tab_index].data[i].formatted_date = this.formatDate(val.value);
-
-        val.value = val.value;
-        val.formatted_date = this.formatDate(val.value);
+        this.editedItem[tab_index].data[i].value = val.value;
+        this.editedItem[tab_index].data[i].formatted_date = this.formatDate(val.value);
 
       });
 
@@ -1127,8 +1116,8 @@ export default {
       return hasError;
     },
 
-    validateRow() {
-
+    rowFieldIsActive(tab_index, row, item) {
+      return row === this.editedIndex[tab_index].index || item.status === 'New';
     },
 
     updateScroll(tab_index) {
@@ -1217,8 +1206,7 @@ export default {
 
       return hasError;
     },
-    
-        
+         
   },
   watch: {
     $route(to, from) {
@@ -1229,9 +1217,6 @@ export default {
   mounted() {
     axios.defaults.headers.common["Authorization"] = "Bearer " + localStorage.getItem("access_token");
     this.getTableFields();
-
-    
-   
   },
 };
 </script>
