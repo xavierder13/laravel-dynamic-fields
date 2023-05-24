@@ -785,8 +785,7 @@ export default {
 
         if(!this.tableHasError[tab_index].error)
         {
-          data.splice(index, 1);
-
+          
           let arrData = []; 
           
           editedItem.data.forEach((val, i) => {
@@ -800,7 +799,7 @@ export default {
             });
           });
 
-          data.push(arrData);
+          data.splice(index, 1, arrData);
           this.refreshTabData(tab_index);
           this.resetRow(tab_index);
         }
