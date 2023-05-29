@@ -47,7 +47,7 @@
                     @blur="$v.password.$touch()"
                     @keyup="isInvalid = false"
                     :append-icon="password_visible ? 'mdi-eye-off' : 'mdi-eye'"
-                    @click:append="password_visible ? password_visible = false : password_visible = true"
+                    @click:append="password_visible = !password_visible"
                   ></v-text-field>
                 </v-form>
               </v-card-text>
