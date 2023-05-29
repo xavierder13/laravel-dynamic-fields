@@ -1013,7 +1013,7 @@ export default {
     },
 
     validateField(table_type, row, tab_index) {
-      // validate when mode not equal to 'fidn'
+      // validate when mode not equal to 'find'
       if(this.mode !== 'Find')
       {
         let type = "";
