@@ -9,63 +9,21 @@ const state = {
 };
 
 const getters = {
-  hasRole: (state) => (role) => {
-    let hasRole = true;
-
-    if(Array.isArray(role))
-    {
-      hasRole = role.every(value => state.roles.includes(value))
-    }
-    else
-    {
-      hasRole = state.permissions.includes(role);
-    }
-    return hasRole;
-
+  hasRole: (state) => (...role) => {
+    return role.every(value => state.roles.includes(value));
   },
-  hasAnyRole: (state) => (role) => {
-    let hasRole = false;
-    
-    if(Array.isArray(role))
-    {
-      role.forEach(value => {
-        if(state.roles.includes(value))
-        {
-          hasRole = true;
-        }
-      });
-    }
-    
-    return hasRole;
-  },
-  hasPermission: (state) => (permission) => {
-    let hasPermission = true;
 
-    if(Array.isArray(permission))
-    {
-      hasPermission = permission.every(value => state.permissions.includes(value))
-    }
-    else
-    {
-      hasPermission = state.permissions.includes(permission);
-    }
-    return hasPermission;
+  hasAnyRole: (state) => (...role) => {
+    return role.some(value => state.roles.includes(value));
   },
-  hasAnyPermission: (state) => (permission) => {
-    let hasPermission = false;
-    
-    if(Array.isArray(permission))
-    {
-      permission.forEach(value => {
-        if(state.permissions.includes(value))
-        {
-          hasPermission = true;
-        }
-      });
-    }
-    
-    return hasPermission;
-  }
+
+  hasPermission: (state) => (...permission) => {
+    return permission.every(value => state.permissions.includes(value));
+  },
+
+  hasAnyPermission: (state) => (...permission) => {
+    return permission.some(value => state.permissions.includes(value));
+  },
 };
 
 const actions = {
