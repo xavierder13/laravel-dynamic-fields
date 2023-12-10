@@ -71,7 +71,7 @@
                       dense
                       :error-messages="field.errorMsg"
                       @input="validateField('Header', i, field.value)"
-                      @blur="validateField('Header', i, null)"
+                      @blur="validateField('Header', i)"
                     >
                       <template slot="selection" slot-scope="data">
                         {{ data.item.value + ' - ' + data.item.description }}
@@ -92,8 +92,8 @@
                       v-model="field.value"
                       dense
                       :error-messages="field.errorMsg"
-                      @input="validateField('Header', i, null)"
-                      @blur="validateField('Header', i, null)"
+                      @input="validateField('Header', i)"
+                      @blur="validateField('Header', i)"
                       v-if="['string', 'date'].includes(field.type)"
                     ></v-text-field>
 
@@ -118,8 +118,8 @@
                           v-bind="attrs"
                           v-on="on"
                           :error-messages="parent_table_fields[i].errorMsg"
-                          @input="validateField('Header', i, null)"
-                          @blur="validateField('Header', i, null)"
+                          @input="validateField('Header', i)"
+                          @blur="validateField('Header', i)"
                         ></v-text-field>
                       </template>
                       <v-date-picker
@@ -143,8 +143,8 @@
                         error: field.error,
                         messages: field.errorMsg,
                       }"
-                      @input="validateField('Header', i, null)"
-                      @blur="validateField('Header', i, null)"
+                      @input="validateField('Header', i)"
+                      @blur="validateField('Header', i)"
                       v-if="field.type === 'integer'"
                     >
                     </v-text-field-integer>
@@ -166,8 +166,8 @@
                         precision: 2,
                         empty: null,
                       }"
-                      @input="validateField('Header', i, null)"
-                      @blur="validateField('Header', i, null)"
+                      @input="validateField('Header', i)"
+                      @blur="validateField('Header', i)"
                       v-if="field.type === 'decimal'"
                     >
                     </v-text-field-money>
@@ -725,7 +725,7 @@ export default {
       else
       {
         this.parent_table_fields.data.forEach((value, i) => {
-          this.validateField('Header', i, null);
+          this.validateField('Header', i);
         });
 
         this.child_tables.forEach((value, index) => {
@@ -1012,7 +1012,10 @@ export default {
       this.refreshTabData(tab_index);
     },
 
-    validateField(table_type, row, tab_index) {
+    validateField(...params) {
+      let table_type = params[0];
+      let row = params[1];
+      let tab_index = params.length === 3 ? params[2] : -1;
       // validate when mode not equal to 'find'
       if(this.mode !== 'Find')
       {
@@ -1157,7 +1160,7 @@ export default {
     },
  
     formatHeaderDateValue(i) {
-      this.validateField('Header', i, null);
+      this.validateField('Header', i);
       let value = this.parent_table_fields.data[i].value;
       this.parent_table_fields.data[i].formatted_date = this.formatDate(value);
     },
