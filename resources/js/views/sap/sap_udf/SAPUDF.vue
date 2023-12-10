@@ -1174,8 +1174,8 @@ export default {
     },
 
     saveField(){
-
-      // this.tableOptionsMode has value ('Add', 'Edit') then set this.optionUnsaved = true
+  
+      // this.tableOptionsMode has  value ('Add', 'Edit') then set this.optionUnsaved = true
       this.optionUnsaved = this.tableOptionsMode ? true : false;
 
       this.$v.editedField.$touch();
@@ -1265,7 +1265,7 @@ export default {
       axios.post('/api/sap/udf/update_field/'+this.editedField.id, this.editedField).then(
         (response) => {
           this.disabled = false;
-          console.log(response.data);
+          
           let data = response.data;
 
           if(data.success)
@@ -1278,6 +1278,7 @@ export default {
           else if(data.field_name) //field name returns error
           {
             this.errorFields.field_name = data.field_name
+            this.showErrorAlert(data.field_name);
           }
           else//if return object is table_name then get the error
           { 

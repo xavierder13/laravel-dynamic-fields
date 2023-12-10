@@ -56,8 +56,7 @@
           <v-card-text class="pa-6">
             <v-row>
               <template v-for="(field, i) in parent_table_fields.data">
-                <v-col cols="3" class="mt-0 mb-0 pt-0 pb-0">
-                  
+                <v-col cols="3" class="mt-0 mb-2 pt-0 pb-0">
                   <template v-if="field.has_options">
                     <v-autocomplete
                       class="pa-0"
@@ -180,13 +179,13 @@
                 <v-card>
                   <v-card-text>
                     <v-tabs v-model="tab" ref="child_table_tabs">
-                      <v-tab v-for="(child, i) in child_tables" :key="child.table_name">
+                      <v-tab v-for="(child, i) in child_tables" :key="child.table_name" :class="tab === i ? 'white--text primary' : 'grey lighten-3'">
                         {{ child.description }}
 
                       </v-tab>
                     </v-tabs>
                     <v-tabs-items v-model="tab">
-                      <v-tab-item v-for="(child, i) in child_tables" :key="child.table_name">
+                      <v-tab-item :transition="false" v-for="(child, i) in child_tables" :key="child.table_name">
                         <v-simple-table 
                           class="elevation-1 child_table" 
                           :id="'child_table' + i" 
@@ -538,7 +537,7 @@ export default {
 
           // breadcrumbs
           this.items[1].text = 'Create ' + this.parent_table.description;
-
+          
           let parent_table_fields = data.parent_table_fields;
           let child_table_fields = data.child_table_fields;
 
@@ -546,7 +545,7 @@ export default {
 
           // assign header fields
           parent_table_fields.forEach((value, index) => {
-            
+            console.log(value);
             this.parent_table_fields.data.push({
               value: '',
               field_name: value.field_name,
@@ -555,6 +554,8 @@ export default {
               is_required: value.is_required,
               date_menu: false,
               formatted_date: null,
+              has_options: value.has_options,
+              options: value.sap_table_field_options,
               error: false,
               errorMsg: "",
             });
