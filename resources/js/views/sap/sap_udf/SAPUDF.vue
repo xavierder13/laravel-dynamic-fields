@@ -361,199 +361,261 @@
                         <v-divider vertical v-if="fieldHasOptions"></v-divider>
                         <v-col cols="4" v-if="fieldHasOptions">
                           <v-card>
-                            <v-card-title class="subtitle-1">Field Options</v-card-title>
-                            <v-card-text>
-                              <v-simple-table 
-                                class="elevation-1" 
-                                id="sap_table_field_options" 
-                                style="max-height: 250px; overflow-y: auto; !important"
+                            <v-card-title class="subtitle-1">
+                              Field Options
+                              <v-divider vertical class="mx-2"></v-divider>
+                              <!-- <v-switch
+                                v-model="switch1"
+                                hide-details=""
+                                class="ma-0 pa-0"
                               >
-                                <template v-slot:default>
-                                  <thead>
-                                    <tr>
-                                      <th class="pa-2" width="10px">#</th>
-                                      <th class="pa-2">Value</th>
-                                      <th class="pa-2">Description</th>
-                                      <th class="pa-2" width="80px">Actions</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    <tr v-for="(item, index) in sap_table_field_options" :class="rowOptionColor(index)">
-                                      <td class="pa-2">{{ index + 1 }}</td>
+                                <template v-slot:label>
+                                  <v-chip :color="switch1 ? 'primary' : 'secondary' " class="ml-1 mt-2"> 
+                                    FMS
+                                  </v-chip>
+                                </template>
+                              </v-switch> -->
+                              <v-checkbox
+                                name="isFMS"
+                                v-model="isFMS"
+                                dense
+                                hide-details
+                                class="ma-0 pa-0"
+                              >
+                                <template v-slot:label>
+                                  <v-chip :color="isFMS ? 'primary' : '' " class="mt-2"> 
+                                    FMS
+                                  </v-chip>
+                                </template>
+                              </v-checkbox>
+                            </v-card-title>
+                            <v-card-text>
+                              <template v-if="isFMS">
+                                <v-row>
+                                  <v-col class="my-0 py-0">
+                                    <v-textarea 
+                                      label="Query"
+                                      v-model="editedField.fms_query" 
+                                      outlined 
+                                      rows="3"
+                                    >
+                                    </v-textarea>
+                                  </v-col>
+                                </v-row>
+                                <v-row>
+                                  <v-col class="my-0 py-0">
+                                    <v-autocomplete
+                                      name="dependent_field"
+                                      :items="dependentFields"
+                                      v-model="editedField.dependent_field"
+                                      label="Dependent Field"
+                                      required
+                                      outlined
+                                    ></v-autocomplete>
+                                  </v-col>
+                                </v-row>
+                              </template>
+                              <v-row v-if="!isFMS">
+                                <v-col>
+                                  <v-simple-table 
+                                    class="elevation-1" 
+                                    id="sap_table_field_options" 
+                                    style="max-height: 250px; overflow-y: auto; !important"
+                                  >
+                                    <template v-slot:default>
+                                      <thead>
+                                        <tr>
+                                          <th class="pa-2" width="10px">#</th>
+                                          <th class="pa-2">Value</th>
+                                          <th class="pa-2">Description</th>
+                                          <th class="pa-2" width="80px">Actions</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        <tr v-for="(item, index) in sap_table_field_options" :class="rowOptionColor(index)">
+                                          <td class="pa-2">{{ index + 1 }}</td>
 
-                                      <!-- START Show Data if row is not for edit (show by default) -->
-                                      <template v-if="index !== editedOptionIndex && item.status !== 'New'">
-                                        <td class="pa-2"> {{ item.value }} </td>
-                                        <td class="pa-2"> {{ item.description }} </td>
-                                      </template>
-                                      <!-- END Show Data if row is not for edit (show by default) -->
+                                          <!-- START Show Data if row is not for edit (show by default) -->
+                                          <template v-if="index !== editedOptionIndex && item.status !== 'New'">
+                                            <td class="pa-2"> {{ item.value }} </td>
+                                            <td class="pa-2"> {{ item.description }} </td>
+                                          </template>
+                                          <!-- END Show Data if row is not for edit (show by default) -->
 
-                                      <!-- START Show Fields if row is for edit -->
-                                      <template v-if="index === editedOptionIndex || item.status === 'New'">
-                                        <td class="pa-2">
-                                          <v-text-field
-                                            name="value"
-                                            v-model="editedOption.value"
-                                            dense
-                                            hide-details
-                                            required
-                                            :error-messages="optionValueErrors"
-                                            @input="$v.editedOption.value.$touch() + (errorFields.value = '')"
-                                            @blur="$v.editedOption.value.$touch()"
-                                            v-if="editedField.type === 'string' || editedField.type === ''"
-                                          ></v-text-field>
-                                          <v-menu
-                                            ref="menu"
-                                            class="pa-0"
-                                            v-model="date_menu_option_value"
-                                            :close-on-content-click="false"
-                                            transition="scale-transition"
-                                            offset-y
-                                            min-width="auto"
-                                            v-if="editedField.type === 'date'"
-                                          >
-                                            <template v-slot:activator="{ on, attrs }">
+                                          <!-- START Show Fields if row is for edit -->
+                                          <template v-if="index === editedOptionIndex || item.status === 'New'">
+                                            <td class="pa-2">
                                               <v-text-field
-                                                class="pa-0 ma-0"
-                                                v-model="computedOptionValueFormatted"
-                                                prepend-icon="mdi-calendar"
-                                                v-bind="attrs"
-                                                v-on="on"
-                                                hide-details=""
+                                                name="value"
+                                                v-model="editedOption.value"
+                                                dense
+                                                hide-details
+                                                required
                                                 :error-messages="optionValueErrors"
                                                 @input="$v.editedOption.value.$touch() + (errorFields.value = '')"
                                                 @blur="$v.editedOption.value.$touch()"
+                                                v-if="editedField.type === 'string' || editedField.type === ''"
                                               ></v-text-field>
-                                            </template>
-                                            <v-date-picker
-                                              v-model="editedOption.value"
-                                              no-title
-                                              scrollable
-                                              @input="date_menu_option_value = false"
-                                            >
-                                            </v-date-picker>
-                                          </v-menu>
-                                          <v-text-field-integer
-                                            class="pa-0"
-                                            v-model="editedOption.value"
-                                            v-bind:properties="{
-                                              name: 'length',
-                                              placeholder: '0',
-                                              'hide-details': true,
-                                              dense: true,
-                                              error: $v.editedOption.value.$error,
-                                              messages: optionValueErrors,
-                                            }"
-                                            @input="$v.editedOption.value.$touch() + (errorFields.value = '')"
-                                            @blur="$v.editedOption.value.$touch()"
-                                            v-if="editedField.type === 'integer'"
-                                          >
-                                          </v-text-field-integer>
-                                          <v-text-field-money
-                                            class="pa-0"
-                                            v-model="editedOption.value"
-                                            v-bind:properties="{
-                                              name: 'length',
-                                              placeholder: '0',
-                                              'hide-details': true,
-                                              dense: true,
-                                              error: $v.editedOption.value.$error,
-                                              messages: optionValueErrors,
-                                            }"
-                                            v-bind:options="{
-                                              length: 11,
-                                              precision: 2,
-                                              empty: null,
-                                            }"
-                                            @input="$v.editedOption.value.$touch() + (errorFields.value = '')"
-                                            @blur="$v.editedOption.value.$touch()"
-                                            v-if="editedField.type === 'decimal'"
-                                          >
-                                          </v-text-field-money>
-                                        </td>
-                                        <td class="pa-2">
-                                          <v-text-field
-                                            name="description"
-                                            v-model="editedOption.description"
-                                            dense
-                                            hide-details
-                                            required
-                                            :error-messages="optionDescriptionErrors"
-                                            @input="$v.editedOption.description.$touch() + (errorFields.value = '')"
-                                            @blur="$v.editedOption.description.$touch()"
-                                          ></v-text-field>
-                                        </td>
-                                      </template>
-                                      <!-- END Show Fields if row is for edit -->
+                                              <v-menu
+                                                ref="menu"
+                                                class="pa-0"
+                                                v-model="date_menu_option_value"
+                                                :close-on-content-click="false"
+                                                transition="scale-transition"
+                                                offset-y
+                                                min-width="auto"
+                                                v-if="editedField.type === 'date'"
+                                              >
+                                                <template v-slot:activator="{ on, attrs }">
+                                                  <v-text-field
+                                                    class="pa-0 ma-0"
+                                                    v-model="computedOptionValueFormatted"
+                                                    prepend-icon="mdi-calendar"
+                                                    v-bind="attrs"
+                                                    v-on="on"
+                                                    hide-details=""
+                                                    :error-messages="optionValueErrors"
+                                                    @input="$v.editedOption.value.$touch() + (errorFields.value = '')"
+                                                    @blur="$v.editedOption.value.$touch()"
+                                                  ></v-text-field>
+                                                </template>
+                                                <v-date-picker
+                                                  v-model="editedOption.value"
+                                                  no-title
+                                                  scrollable
+                                                  @input="date_menu_option_value = false"
+                                                >
+                                                </v-date-picker>
+                                              </v-menu>
+                                              <v-text-field-integer
+                                                class="pa-0"
+                                                v-model="editedOption.value"
+                                                v-bind:properties="{
+                                                  name: 'length',
+                                                  placeholder: '0',
+                                                  'hide-details': true,
+                                                  dense: true,
+                                                  error: $v.editedOption.value.$error,
+                                                  messages: optionValueErrors,
+                                                }"
+                                                @input="$v.editedOption.value.$touch() + (errorFields.value = '')"
+                                                @blur="$v.editedOption.value.$touch()"
+                                                v-if="editedField.type === 'integer'"
+                                              >
+                                              </v-text-field-integer>
+                                              <v-text-field-money
+                                                class="pa-0"
+                                                v-model="editedOption.value"
+                                                v-bind:properties="{
+                                                  name: 'length',
+                                                  placeholder: '0',
+                                                  'hide-details': true,
+                                                  dense: true,
+                                                  error: $v.editedOption.value.$error,
+                                                  messages: optionValueErrors,
+                                                }"
+                                                v-bind:options="{
+                                                  length: 11,
+                                                  precision: 2,
+                                                  empty: null,
+                                                }"
+                                                @input="$v.editedOption.value.$touch() + (errorFields.value = '')"
+                                                @blur="$v.editedOption.value.$touch()"
+                                                v-if="editedField.type === 'decimal'"
+                                              >
+                                              </v-text-field-money>
+                                            </td>
+                                            <td class="pa-2">
+                                              <v-text-field
+                                                name="description"
+                                                v-model="editedOption.description"
+                                                dense
+                                                hide-details
+                                                required
+                                                :error-messages="optionDescriptionErrors"
+                                                @input="$v.editedOption.description.$touch() + (errorFields.value = '')"
+                                                @blur="$v.editedOption.description.$touch()"
+                                              ></v-text-field>
+                                            </td>
+                                          </template>
+                                          <!-- END Show Fields if row is for edit -->
 
-                                      <!-- START Show Edit(pencil icon) and Delete (trash icon) button if not Edit Mode (show by default) -->
-                                      <template v-if="index !== editedOptionIndex && item.status !== 'New' ">
-                                        <td class="pa-2">
-                                          <v-icon
-                                            small
-                                            class="mr-2"
-                                            color="green"
-                                            @click="editOption(item)"
-                                            :disabled="tableOptionsMode === 'Add' ? true : false"
-                                          >
-                                            mdi-pencil
-                                          </v-icon>
+                                          <!-- START Show Edit(pencil icon) and Delete (trash icon) button if not Edit Mode (show by default) -->
+                                          <template v-if="index !== editedOptionIndex && item.status !== 'New' ">
+                                            <td class="pa-2">
+                                              <v-icon
+                                                small
+                                                class="mr-2"
+                                                color="green"
+                                                @click="editOption(item)"
+                                                :disabled="tableOptionsMode === 'Add' ? true : false"
+                                              >
+                                                mdi-pencil
+                                              </v-icon>
 
-                                          <v-icon
-                                            small
-                                            color="red"
-                                            @click="removeOptionRow(item)"
-                                            :disabled="['Add', 'Edit'].includes(tableOptionsMode)"
-                                          >
-                                            mdi-delete
-                                          </v-icon>
-                                        </td>
-                                      </template>
-                                      <!-- END Show Edit(pencil icon) and Delete (trash icon) button if not Edit Mode (show by default) -->
+                                              <v-icon
+                                                small
+                                                color="red"
+                                                @click="removeOptionRow(item)"
+                                                :disabled="['Add', 'Edit'].includes(tableOptionsMode)"
+                                              >
+                                                mdi-delete
+                                              </v-icon>
+                                            </td>
+                                          </template>
+                                          <!-- END Show Edit(pencil icon) and Delete (trash icon) button if not Edit Mode (show by default) -->
 
-                                      <!-- START  Show Save and Cancel button if Edit Mode -->
-                                      <template v-if="index === editedOptionIndex ? true : false || item.status === 'New' ">
-                                        <td class="pa-2">
-                                          <v-btn
-                                            x-small
-                                            :disabled="disabled"
-                                            @click="saveOption()"
-                                            icon
-                                          >
-                                            <v-icon color="primary">mdi-content-save</v-icon>
-                                          </v-btn>
-                                          <v-btn
-                                            x-small
-                                            color="#E0E0E0"
-                                            @click="cancelOptionEvent(item)"
-                                            icon
-                                          >
-                                            <v-icon color="red">mdi-cancel</v-icon>
-                                          </v-btn>
-                                        </td>
-                                      </template>
-                                      <!-- END  Show Save and Cancel button if Edit Mode -->
-                                    </tr>
-                                  </tbody>
-                                  <tfoot>
-                                    <tr>
-                                      <td colspan="4" class="text-right">
-                                        <v-btn class="primary" x-small @click="newOptionItem()" :disabled="['Add', 'Edit'].includes(tableOptionsMode)">add item</v-btn>
-                                      </td>
-                                    </tr>
-                                  </tfoot>
-                                </template>
-                              </v-simple-table>
-                              <v-alert
-                                dense
-                                outlined
-                                type="error"
-                                class="pa-1 mt-2 mb-0"
-                                v-if="optionListError.status || optionUnsaved || optionsValueInvalid"
-                              >
-                                {{ optionListError.errorMsg }}
-                              </v-alert>
+                                          <!-- START  Show Save and Cancel button if Edit Mode -->
+                                          <template v-if="index === editedOptionIndex ? true : false || item.status === 'New' ">
+                                            <td class="pa-2">
+                                              <v-btn
+                                                x-small
+                                                :disabled="disabled"
+                                                @click="saveOption()"
+                                                icon
+                                              >
+                                                <v-icon color="primary">mdi-content-save</v-icon>
+                                              </v-btn>
+                                              <v-btn
+                                                x-small
+                                                color="#E0E0E0"
+                                                @click="cancelOptionEvent(item)"
+                                                icon
+                                              >
+                                                <v-icon color="red">mdi-cancel</v-icon>
+                                              </v-btn>
+                                            </td>
+                                          </template>
+                                          <!-- END  Show Save and Cancel button if Edit Mode -->
+                                        </tr>
+                                      </tbody>
+                                      <tfoot>
+                                        <tr>
+                                          <td colspan="4" class="text-right">
+                                            <v-btn class="primary" x-small @click="newOptionItem()" :disabled="['Add', 'Edit'].includes(tableOptionsMode)">add item</v-btn>
+                                          </td>
+                                        </tr>
+                                      </tfoot>
+                                    </template>
+                                  </v-simple-table>
+                                  <v-alert
+                                    dense
+                                    outlined
+                                    type="error"
+                                    class="pa-1 mt-2 mb-0"
+                                    v-if="optionListError.status || optionUnsaved || optionsValueInvalid"
+                                  >
+                                    {{ optionListError.errorMsg }}
+                                  </v-alert>
+                                </v-col>
+                              </v-row>
                             </v-card-text>
+                            <v-card-actions class="pa-0" v-if="isFMS">
+                              <v-spacer></v-spacer>
+                              <v-btn color="primary" class='mb-3 mr-4' @click="testQuery()">
+                                Test Query
+                              </v-btn>
+                            </v-card-actions>
                           </v-card>
                         </v-col>
                       </v-row>
@@ -835,6 +897,8 @@ export default {
         default_value: "",
         has_options: false,
         is_required: false,
+        fms_query: "",
+        dependent_field: "",
       },
       defaultField: {
         field_name: "",
@@ -844,6 +908,8 @@ export default {
         default_value: "",
         has_options: false,
         is_required: false,
+        fms_query: "",
+        dependent_field: "",
       },
       editedOption: {
         value: "",
@@ -893,6 +959,9 @@ export default {
       date_menu_option_value: false,
       dialog_migrate: false,
       migrating: false,
+      switch1: false, 
+      isFMS: false,
+      dependentFields: ['mktg_event', 'mktg_prog', 'collector'],
     };
   },
 
@@ -1653,6 +1722,27 @@ export default {
       });
 
       this.optionsValueInvalid = invalid;
+    },
+
+    testQuery() {
+      const data = { query: this.editedField.fms_query };
+      axios.post('/api/sap/udf/test_query', data).then(
+        (response) => {
+          console.log(response.data);
+          let data = response.data;
+          if(data.success)
+          {
+            this.showAlert(data.success);
+          }
+          else if(data.error)
+          {
+            this.showErrorAlert(data.msg)
+          }
+        },
+        (error) => {
+          console.log(error);
+        }
+      )
     },
 
     dataIsInvalid(value) {

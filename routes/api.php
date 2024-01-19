@@ -167,6 +167,10 @@ Route::group(['prefix' => 'sap', 'middleware' => ['auth:api']], function(){
             'uses' => 'API\SAPUDFController@migrate',
             'as' => 'sap.udf.migrate',
         ]);
+        Route::post('/test_query', [
+            'uses' => 'API\SAPUDFController@test_query',
+            'as' => 'sap.udf.test_query',
+        ]);
     });
     
     

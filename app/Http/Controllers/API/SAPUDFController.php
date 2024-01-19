@@ -833,4 +833,16 @@ class SAPUDFController extends Controller
 
         return response()->json(['success' => 'Table fields has been migrated'], 200);
     }
+
+    public function test_query(Request $request) {
+            
+        try {
+
+            $query = DB::select($request->get('query'));
+            return response()->json(['success' => 'Query successfully executed', 'data' => $query], 200);
+            
+        } catch (\Throwable $th) {
+            return response()->json(['error' => $th, 'msg' => 'Error Query!'], 200);
+        }
+    }
 }
